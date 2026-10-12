@@ -1,0 +1,6 @@
+{
+  "name": "Dompet Pintar",
+  "description": "Aplikasi keuangan pribadi cerdas berbahasa Indonesia: anggaran gaji tetap, alokasi bonus bertahap, dana darurat, dan investasi.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
