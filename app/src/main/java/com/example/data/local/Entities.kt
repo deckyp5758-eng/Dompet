@@ -3,6 +3,12 @@ package com.example.data.local
 import androidx.room.Entity
 import androidx.room.PrimaryKey
 
+object PaydayMode {
+    const val START_OF_MONTH = "START_OF_MONTH"
+    const val END_OF_MONTH = "END_OF_MONTH"
+    const val SPECIFIC_DAY = "SPECIFIC_DAY"
+}
+
 @Entity(tableName = "user_profile")
 data class ProfileEntity(
     @PrimaryKey val id: Int = 1,
@@ -13,7 +19,9 @@ data class ProfileEntity(
     val financialPriority: String = "Investasi jangka panjang",
     val emergencyTargetMonths: Int = 3,
     val currency: String = "IDR",
-    val timezone: String = "Asia/Jakarta"
+    val timezone: String = "Asia/Jakarta",
+    val paydayMode: String = PaydayMode.END_OF_MONTH,
+    val paydayDayOfMonth: Int = 25
 )
 
 @Entity(tableName = "incomes")

@@ -1,6 +1,7 @@
 package com.example.ui.screens
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -14,16 +15,20 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AccountBalanceWallet
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Payments
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
@@ -46,11 +51,17 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.example.data.local.BudgetCategoryEntity
 import com.example.data.local.ExpenseEntity
 import com.example.data.local.ProfileEntity
 import com.example.data.model.CurrencyFormatter
+import com.example.ui.theme.AccentAmber
+import com.example.ui.theme.AccentIndigo
+import com.example.ui.theme.AccentRose
+import com.example.ui.theme.PrimaryEmerald
 
 @Composable
 fun BudgetScreen(
@@ -64,8 +75,13 @@ fun BudgetScreen(
     var showEditDialog by remember { mutableStateOf(false) }
 
     val monthlySalary = profile.monthlySalary
-    val totalBudgetPercent = budgetCategories.sumOf { it.percentage }
-    val totalPlannedNominal = budgetCategories.sumOf { it.plannedAmount }
+    val totalPlannedBudget = remember(budgetCategories) { budgetCategories.sumOf { it.plannedAmount } }
+    val totalActualExpense = remember(expenses) { expenses.sumOf { it.amount } }
+    val totalRemainingBudget = (totalPlannedBudget - totalActualExpense).coerceAtLeast(0L)
+
+    val overallUsagePercent = if (totalPlannedBudget > 0) {
+        ((totalActualExpense.toFloat() / totalPlannedBudget.toFloat()) * 100f).coerceIn(0f, 150f)
+    } else 0f
 
     LazyColumn(
         modifier = Modifier
@@ -74,226 +90,251 @@ fun BudgetScreen(
         verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
         item {
-            Spacer(modifier = Modifier.height(2.dp))
+            Spacer(modifier = Modifier.height(4.dp))
+
+            // Header Info & Quick Salary Customizer
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Column(modifier = Modifier.weight(1f)) {
+                Column {
                     Text(
-                        text = "Anggaran Bulanan",
-                        style = MaterialTheme.typography.headlineSmall,
+                        text = "Alokasi Anggaran",
+                        style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.primary
+                        color = MaterialTheme.colorScheme.onSurface
                     )
                     Text(
-                        text = "Alokasi 100% dari Gaji Tetap (${CurrencyFormatter.formatRupiah(monthlySalary)})",
+                        text = "Dasar Gaji: ${CurrencyFormatter.formatRupiah(monthlySalary)}",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
-                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     OutlinedButton(
                         onClick = onCustomizeSalaryClick,
+                        shape = RoundedCornerShape(12.dp),
                         modifier = Modifier.testTag("customize_salary_budget_btn")
                     ) {
                         Icon(Icons.Default.Tune, contentDescription = null, modifier = Modifier.size(16.dp))
                         Spacer(modifier = Modifier.width(4.dp))
-                        Text("Atur Gaji")
+                        Text("Gaji", fontSize = 12.sp)
                     }
+
                     Button(
                         onClick = { showEditDialog = true },
+                        shape = RoundedCornerShape(12.dp),
                         modifier = Modifier.testTag("edit_budget_button")
                     ) {
                         Icon(Icons.Default.Edit, contentDescription = null, modifier = Modifier.size(16.dp))
                         Spacer(modifier = Modifier.width(4.dp))
-                        Text("Ubah Pos")
+                        Text("Ubah Pos", fontSize = 12.sp)
                     }
                 }
             }
         }
 
-        // Salary Status Banner (Requirement 3)
-        item {
-            if (!isSalaryReceivedThisMonth) {
-                Card(
-                    colors = CardDefaults.cardColors(containerColor = Color(0xFFFEF3C7)),
-                    shape = RoundedCornerShape(16.dp),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Row(modifier = Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
-                        Icon(
-                            Icons.Default.Info,
-                            contentDescription = null,
-                            tint = Color(0xFFB45309),
-                            modifier = Modifier.size(24.dp)
-                        )
-                        Spacer(modifier = Modifier.width(10.dp))
-                        Column {
-                            Text(
-                                text = "Status: Anggaran Terencana (Gaji Belum Cair)",
-                                style = MaterialTheme.typography.titleSmall,
-                                fontWeight = FontWeight.Bold,
-                                color = Color(0xFF78350F)
-                            )
-                            Text(
-                                text = "Dana belum tersedia di kas aktual hingga gaji ditandai sudah diterima di Beranda atau Transaksi.",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = Color(0xFF92400E)
-                            )
-                        }
-                    }
-                }
-            } else {
-                Card(
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
-                    shape = RoundedCornerShape(16.dp),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Row(modifier = Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
-                        Icon(
-                            Icons.Default.CheckCircle,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(24.dp)
-                        )
-                        Spacer(modifier = Modifier.width(10.dp))
-                        Column {
-                            Text(
-                                text = "Gaji Bulan Ini Sudah Diterima",
-                                style = MaterialTheme.typography.titleSmall,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.onPrimaryContainer
-                            )
-                            Text(
-                                text = "Dana telah tersedia di kas aktual untuk dialokasikan sesuai pos anggaran.",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onPrimaryContainer
-                            )
-                        }
-                    }
-                }
-            }
-        }
-
-        // Total Summary Card
+        // Master Overview Card
         item {
             Card(
-                shape = RoundedCornerShape(18.dp),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f)),
+                shape = RoundedCornerShape(20.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Column {
-                        Text(
-                            text = "Total Anggaran Terencana",
-                            style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        Text(
-                            text = CurrencyFormatter.formatRupiah(totalPlannedNominal),
-                            style = MaterialTheme.typography.titleLarge,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
-                    Surface(
-                        color = if (Math.abs(totalBudgetPercent - 100.0) < 0.1) MaterialTheme.colorScheme.primaryContainer
-                        else MaterialTheme.colorScheme.errorContainer,
-                        shape = RoundedCornerShape(100.dp)
-                    ) {
-                        Text(
-                            text = "${String.format("%.0f", totalBudgetPercent)}% Gaji",
-                            style = MaterialTheme.typography.labelMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = if (Math.abs(totalBudgetPercent - 100.0) < 0.1) MaterialTheme.colorScheme.onPrimaryContainer
-                            else MaterialTheme.colorScheme.onErrorContainer,
-                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
-                        )
-                    }
-                }
-            }
-        }
-
-        item {
-            Text(
-                text = "Rincian 6 Pos Anggaran Utama:",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold
-            )
-        }
-
-        // List of Budget Items with Enhanced Progress
-        items(budgetCategories) { cat ->
-            val spent = expenses.filter { it.category.contains(cat.name, ignoreCase = true) }.sumOf { it.amount }
-            val remaining = cat.plannedAmount - spent
-            val progress = if (cat.plannedAmount > 0) (spent.toFloat() / cat.plannedAmount).coerceIn(0f, 1f) else 0f
-            val isOver = remaining < 0
-            val isWarning = progress > 0.75f && !isOver
-
-            val progressColor = when {
-                isOver -> MaterialTheme.colorScheme.error
-                isWarning -> Color(0xFFD97706)
-                else -> MaterialTheme.colorScheme.primary
-            }
-
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.55f))
-            ) {
-                Column(modifier = Modifier.padding(14.dp)) {
+                Column(modifier = Modifier.padding(18.dp)) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.Top
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "Ringkasan Pagu Bulan Ini",
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Surface(
+                            shape = RoundedCornerShape(8.dp),
+                            color = when {
+                                overallUsagePercent > 95f -> Color(0xFFFFE4E6)
+                                overallUsagePercent > 80f -> Color(0xFFFEF3C7)
+                                else -> Color(0xFFECFDF5)
+                            }
+                        ) {
                             Text(
-                                text = cat.name,
-                                style = MaterialTheme.typography.titleSmall,
-                                fontWeight = FontWeight.Bold
-                            )
-                            Text(
-                                text = "Alokasi ${String.format("%.0f", cat.percentage)}% = ${CurrencyFormatter.formatRupiah(cat.plannedAmount)}",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-
-                        Column(horizontalAlignment = Alignment.End) {
-                            Text(
-                                text = if (isOver) "Lebih ${CurrencyFormatter.formatRupiah(-remaining)}"
-                                else "Sisa ${CurrencyFormatter.formatRupiah(remaining)}",
-                                style = MaterialTheme.typography.titleSmall,
+                                text = "${overallUsagePercent.toInt()}% Terpakai",
+                                color = when {
+                                    overallUsagePercent > 95f -> AccentRose
+                                    overallUsagePercent > 80f -> AccentAmber
+                                    else -> PrimaryEmerald
+                                },
+                                fontSize = 11.sp,
                                 fontWeight = FontWeight.Bold,
-                                color = if (isOver) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary
-                            )
-                            Text(
-                                text = "Terpakai: ${CurrencyFormatter.formatRupiah(spent)}",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
                             )
                         }
                     }
 
-                    Spacer(modifier = Modifier.height(10.dp))
+                    Spacer(modifier = Modifier.height(14.dp))
 
                     LinearProgressIndicator(
-                        progress = { progress },
+                        progress = { (overallUsagePercent / 100f).coerceIn(0f, 1f) },
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(8.dp)
                             .clip(RoundedCornerShape(4.dp)),
-                        color = progressColor,
-                        trackColor = MaterialTheme.colorScheme.surface
+                        color = when {
+                            overallUsagePercent > 95f -> AccentRose
+                            overallUsagePercent > 80f -> AccentAmber
+                            else -> PrimaryEmerald
+                        },
+                        trackColor = MaterialTheme.colorScheme.surfaceVariant
                     )
+
+                    Spacer(modifier = Modifier.height(14.dp))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Column {
+                            Text("Total Pagu", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text(CurrencyFormatter.formatRupiah(totalPlannedBudget), fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                        }
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text("Terpakai", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text(CurrencyFormatter.formatRupiah(totalActualExpense), fontSize = 13.sp, fontWeight = FontWeight.Bold, color = AccentRose)
+                        }
+                        Column(horizontalAlignment = Alignment.End) {
+                            Text("Sisa Pagu", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text(CurrencyFormatter.formatRupiah(totalRemainingBudget), fontSize = 13.sp, fontWeight = FontWeight.Bold, color = PrimaryEmerald)
+                        }
+                    }
+                }
+            }
+        }
+
+        // Section Title
+        item {
+            Text(
+                text = "Daftar Pos Anggaran (${budgetCategories.size})",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+        }
+
+        // Category Cards
+        items(budgetCategories) { cat ->
+            val catExpenses = expenses.filter { it.category == cat.name }
+            val catActualExpense = catExpenses.sumOf { it.amount }
+            val catRemaining = (cat.plannedAmount - catActualExpense).coerceAtLeast(0L)
+            val usagePct = if (cat.plannedAmount > 0) {
+                ((catActualExpense.toFloat() / cat.plannedAmount.toFloat()) * 100f).coerceIn(0f, 150f)
+            } else 0f
+
+            Card(
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                elevation = CardDefaults.cardElevation(defaultElevation = 0.5.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .testTag("budget_category_card_${cat.id}")
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Surface(
+                                shape = CircleShape,
+                                color = MaterialTheme.colorScheme.primaryContainer,
+                                modifier = Modifier.size(38.dp)
+                            ) {
+                                Box(contentAlignment = Alignment.Center) {
+                                    Icon(
+                                        imageVector = Icons.Default.AccountBalanceWallet,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.primary,
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                }
+                            }
+                            Spacer(modifier = Modifier.width(10.dp))
+                            Column {
+                                Text(
+                                    text = cat.name,
+                                    style = MaterialTheme.typography.titleSmall,
+                                    fontWeight = FontWeight.Bold
+                                )
+                                Text(
+                                    text = "${cat.percentage}% dari gaji (${CurrencyFormatter.formatRupiah(cat.plannedAmount)})",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+
+                        Surface(
+                            shape = RoundedCornerShape(8.dp),
+                            color = when {
+                                usagePct > 95f -> Color(0xFFFFE4E6)
+                                usagePct > 80f -> Color(0xFFFEF3C7)
+                                else -> Color(0xFFECFDF5)
+                            }
+                        ) {
+                            Text(
+                                text = "${usagePct.toInt()}%",
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = when {
+                                    usagePct > 95f -> AccentRose
+                                    usagePct > 80f -> AccentAmber
+                                    else -> PrimaryEmerald
+                                },
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    LinearProgressIndicator(
+                        progress = { (usagePct / 100f).coerceIn(0f, 1f) },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(6.dp)
+                            .clip(RoundedCornerShape(3.dp)),
+                        color = when {
+                            usagePct > 95f -> AccentRose
+                            usagePct > 80f -> AccentAmber
+                            else -> PrimaryEmerald
+                        },
+                        trackColor = MaterialTheme.colorScheme.surfaceVariant
+                    )
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text(
+                            text = "Terpakai: ${CurrencyFormatter.formatRupiah(catActualExpense)}",
+                            fontSize = 11.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Text(
+                            text = "Sisa: ${CurrencyFormatter.formatRupiah(catRemaining)}",
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = if (usagePct > 95f) AccentRose else PrimaryEmerald
+                        )
+                    }
                 }
             }
         }
@@ -304,12 +345,12 @@ fun BudgetScreen(
     }
 
     if (showEditDialog) {
-        BudgetEditorDialog(
+        EditBudgetDialog(
+            categories = budgetCategories,
             salary = monthlySalary,
-            initialCategories = budgetCategories,
             onDismiss = { showEditDialog = false },
-            onSave = { updated ->
-                onSaveBudgetCategories(updated)
+            onSave = { updatedList ->
+                onSaveBudgetCategories(updatedList)
                 showEditDialog = false
             }
         )
@@ -317,127 +358,87 @@ fun BudgetScreen(
 }
 
 @Composable
-fun BudgetEditorDialog(
+fun EditBudgetDialog(
+    categories: List<BudgetCategoryEntity>,
     salary: Long,
-    initialCategories: List<BudgetCategoryEntity>,
     onDismiss: () -> Unit,
     onSave: (List<BudgetCategoryEntity>) -> Unit
 ) {
-    val editableList = remember {
-        initialCategories.map {
-            mutableStateOf(String.format("%.0f", it.percentage))
-        }
+    var editableCategories by remember {
+        mutableStateOf(categories.map { it.copy() })
     }
 
-    val totalPct = editableList.sumOf { it.value.toDoubleOrNull() ?: 0.0 }
-    val isValid = Math.abs(totalPct - 100.0) < 0.1
-    val diffPct = 100.0 - totalPct
+    val totalPercentage = editableCategories.sumOf { it.percentage }
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Atur Persentase Anggaran Gaji") },
+        title = {
+            Text(
+                text = "Ubah Porsi Pos Anggaran",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold
+            )
+        },
         text = {
-            Column(modifier = Modifier.padding(vertical = 4.dp)) {
+            Column {
                 Text(
-                    text = "Gaji Tetap: ${CurrencyFormatter.formatRupiah(salary)}. Total harus tepat 100%.",
+                    text = "Total persentase saat ini: ${totalPercentage}%",
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    color = if (totalPercentage == 100.0) PrimaryEmerald else AccentRose,
+                    fontWeight = FontWeight.Bold
                 )
+
                 Spacer(modifier = Modifier.height(10.dp))
 
-                initialCategories.forEachIndexed { index, cat ->
-                    val pctState = editableList[index]
-                    val pct = pctState.value.toDoubleOrNull() ?: 0.0
-                    val planned = ((salary * pct) / 100.0).toLong()
-
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 4.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Column(modifier = Modifier.weight(1f)) {
+                LazyColumn(modifier = Modifier.height(300.dp)) {
+                    items(editableCategories) { cat ->
+                        var pctText by remember(cat.percentage) { mutableStateOf(cat.percentage.toString()) }
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 4.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
                             Text(
                                 text = cat.name,
-                                style = MaterialTheme.typography.bodySmall,
-                                fontWeight = FontWeight.SemiBold
+                                style = MaterialTheme.typography.bodyMedium,
+                                modifier = Modifier.weight(1f)
                             )
-                            Text(
-                                text = CurrencyFormatter.formatRupiah(planned),
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.primary
-                            )
-                        }
-
-                        Row(verticalAlignment = Alignment.CenterVertically) {
                             OutlinedTextField(
-                                value = pctState.value,
-                                onValueChange = {
-                                    pctState.value = it.filter { c -> c.isDigit() }
+                                value = pctText,
+                                onValueChange = { newVal ->
+                                    pctText = newVal
+                                    val parsed = newVal.toDoubleOrNull() ?: 0.0
+                                    editableCategories = editableCategories.map {
+                                        if (it.id == cat.id) {
+                                            it.copy(
+                                                percentage = parsed,
+                                                plannedAmount = (salary * parsed / 100.0).toLong()
+                                            )
+                                        } else it
+                                    }
                                 },
                                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                                modifier = Modifier.width(60.dp),
+                                modifier = Modifier.width(90.dp),
                                 singleLine = true,
-                                textStyle = MaterialTheme.typography.bodySmall
+                                trailingIcon = { Text("%", fontSize = 12.sp) }
                             )
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text("%", style = MaterialTheme.typography.bodySmall)
                         }
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(12.dp))
-
-                // Real-time Sum Check Indicator
-                Surface(
-                    shape = RoundedCornerShape(12.dp),
-                    color = if (isValid) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.errorContainer,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(10.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            text = if (isValid) "Total Tepat 100%" else "Sisa: ${if (diffPct > 0) "+${String.format("%.0f", diffPct)}%" else "${String.format("%.0f", diffPct)}%"}",
-                            style = MaterialTheme.typography.labelMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = if (isValid) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onErrorContainer
-                        )
-                        Text(
-                            text = "${String.format("%.0f", totalPct)}% / 100%",
-                            style = MaterialTheme.typography.titleSmall,
-                            fontWeight = FontWeight.Bold,
-                            color = if (isValid) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onErrorContainer
-                        )
                     }
                 }
             }
         },
         confirmButton = {
             Button(
-                onClick = {
-                    if (isValid) {
-                        val result = initialCategories.mapIndexed { idx, cat ->
-                            val pct = editableList[idx].value.toDoubleOrNull() ?: 0.0
-                            val nominal = ((salary * pct) / 100.0).toLong()
-                            cat.copy(percentage = pct, plannedAmount = nominal)
-                        }
-                        onSave(result)
-                    }
-                },
-                enabled = isValid,
-                modifier = Modifier.testTag("save_budget_button")
+                onClick = { onSave(editableCategories) },
+                shape = RoundedCornerShape(12.dp)
             ) {
-                Text("Simpan Anggaran")
+                Text("Simpan")
             }
         },
         dismissButton = {
-            OutlinedButton(onClick = onDismiss) {
+            OutlinedButton(onClick = onDismiss, shape = RoundedCornerShape(12.dp)) {
                 Text("Batal")
             }
         }

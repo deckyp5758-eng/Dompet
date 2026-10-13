@@ -82,6 +82,16 @@ object CurrencyFormatter {
         val sdf = SimpleDateFormat("MMMM yyyy", rupiahLocale)
         return sdf.format(Date(timeMillis))
     }
+
+    fun formatFullDate(timeMillis: Long): String {
+        val sdf = SimpleDateFormat("EEEE, d MMMM yyyy", rupiahLocale)
+        return sdf.format(Date(timeMillis))
+    }
+
+    fun formatDayMonth(timeMillis: Long): String {
+        val sdf = SimpleDateFormat("d MMMM", rupiahLocale)
+        return sdf.format(Date(timeMillis))
+    }
 }
 
 enum class BudgetPreset(

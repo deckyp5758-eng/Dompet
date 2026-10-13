@@ -12,46 +12,53 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 
 private val DarkColorScheme = darkColorScheme(
-    primary = Emerald80,
-    onPrimary = EmeraldDark,
-    primaryContainer = EmeraldDark,
-    onPrimaryContainer = EmeraldLight,
-    secondary = Teal80,
-    onSecondary = Color.Black,
-    secondaryContainer = Teal40,
-    onSecondaryContainer = TealContainer,
-    tertiary = Gold80,
+    primary = DarkEmerald,
+    onPrimary = PrimaryEmeraldDark,
+    primaryContainer = DarkEmeraldContainer,
+    onPrimaryContainer = PrimaryEmeraldLight,
+    secondary = AccentIndigo,
+    onSecondary = Color.White,
+    secondaryContainer = AccentIndigoDark,
+    onSecondaryContainer = AccentIndigoLight,
+    tertiary = AccentAmber,
+    tertiaryContainer = AccentAmberDark,
     background = DarkBackground,
     surface = DarkSurface,
     surfaceVariant = DarkSurfaceVariant,
+    outline = DarkBorder,
+    outlineVariant = DarkBorder.copy(alpha = 0.5f),
     onBackground = DarkTextPrimary,
     onSurface = DarkTextPrimary,
-    error = DangerRed
+    onSurfaceVariant = DarkTextSecondary,
+    error = StatusError
 )
 
 private val LightColorScheme = lightColorScheme(
-    primary = Emerald40,
+    primary = PrimaryEmerald,
     onPrimary = Color.White,
-    primaryContainer = EmeraldLight,
-    onPrimaryContainer = EmeraldDark,
-    secondary = Teal40,
+    primaryContainer = PrimaryEmeraldContainer,
+    onPrimaryContainer = OnPrimaryEmeraldContainer,
+    secondary = AccentIndigo,
     onSecondary = Color.White,
-    secondaryContainer = TealContainer,
-    onSecondaryContainer = Teal40,
-    tertiary = Gold40,
-    tertiaryContainer = GoldContainer,
-    background = OffWhite,
-    surface = CardSurfaceLight,
+    secondaryContainer = AccentIndigoLight,
+    onSecondaryContainer = AccentIndigoDark,
+    tertiary = AccentAmber,
+    tertiaryContainer = AccentAmberLight,
+    background = BgLight,
+    surface = SurfaceWhite,
     surfaceVariant = SurfaceVariantLight,
+    outline = BorderSubtle,
+    outlineVariant = BorderSoft,
     onBackground = TextPrimary,
     onSurface = TextPrimary,
-    error = DangerRed
+    onSurfaceVariant = TextSecondary,
+    error = AccentRose
 )
 
 @Composable
 fun MyApplicationTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
-    dynamicColor: Boolean = false, // Use our finance-curated palette for consistent brand feel
+    dynamicColor: Boolean = false,
     content: @Composable () -> Unit
 ) {
     val colorScheme = when {

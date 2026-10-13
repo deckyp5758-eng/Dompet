@@ -19,7 +19,7 @@ import kotlinx.coroutines.launch
         InvestmentAssetEntity::class,
         InvestmentTxEntity::class
     ],
-    version = 1,
+    version = 3,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -36,6 +36,7 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "dompet_pintar_db"
                 )
+                    .fallbackToDestructiveMigration()
                     .addCallback(DatabaseCallback())
                     .build()
                 INSTANCE = instance
@@ -66,7 +67,9 @@ abstract class AppDatabase : RoomDatabase() {
                     financialPriority = "Investasi jangka panjang",
                     emergencyTargetMonths = 3,
                     currency = "IDR",
-                    timezone = "Asia/Jakarta"
+                    timezone = "Asia/Jakarta",
+                    paydayMode = PaydayMode.END_OF_MONTH,
+                    paydayDayOfMonth = 25
                 )
             )
 

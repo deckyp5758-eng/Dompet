@@ -6,6 +6,7 @@ import com.example.data.local.EmergencyFundEntity
 import com.example.data.local.ExpenseEntity
 import com.example.data.local.IncomeEntity
 import com.example.data.local.InvestmentAssetEntity
+import com.example.data.local.PaydayMode
 import com.example.data.local.ProfileEntity
 import com.example.data.model.ExpenseCategory
 import java.util.Calendar
@@ -34,7 +35,14 @@ data class DashboardSummary(
     val isDailyLimitWarning: Boolean = false,
     val pendingSalaryExists: Boolean = false,
     val unallocatedBonusCount: Int = 0,
-    val essentialShortfall: Long = 0L
+    val essentialShortfall: Long = 0L,
+    val paydayDayOfMonth: Int = 25,
+    val paydayMode: String = PaydayMode.END_OF_MONTH,
+    val paydayDescription: String = "Akhir Bulan",
+    val daysUntilNextPayday: Int = 0,
+    val nextPaydayDateMillis: Long = 0L,
+    val isPaydayToday: Boolean = false,
+    val payCycleProgressPct: Float = 0f
 )
 
 /**
@@ -162,13 +170,70 @@ object DashboardCalculator {
             val progressInitial = (emergencyBalance.toFloat() / initialTarget).coerceIn(0f, 1f)
             val progressFull = (emergencyBalance.toFloat() / fullTarget).coerceIn(0f, 1f)
 
-            // Safe Daily Flexible Limit
+            // Payday & Calendar Cycle Synchronization (Awal Bulan, Akhir Bulan Otomatis, atau Tanggal Spesifik)
+            val todayZero = (referenceCalendar.clone() as Calendar).apply {
+                set(Calendar.HOUR_OF_DAY, 0)
+                set(Calendar.MINUTE, 0)
+                set(Calendar.SECOND, 0)
+                set(Calendar.MILLISECOND, 0)
+            }
+
+            val maxDaysInCurrentMonth = todayZero.getActualMaximum(Calendar.DAY_OF_MONTH)
+            val effectivePaydayThisMonth = when (prof.paydayMode) {
+                PaydayMode.START_OF_MONTH -> 1
+                PaydayMode.END_OF_MONTH -> maxDaysInCurrentMonth
+                else -> prof.paydayDayOfMonth.coerceIn(1, 31).coerceAtMost(maxDaysInCurrentMonth)
+            }
+
+            val paydayDescription = when (prof.paydayMode) {
+                PaydayMode.START_OF_MONTH -> "Awal Bulan (Tgl 1)"
+                PaydayMode.END_OF_MONTH -> "Akhir Bulan (Tgl $maxDaysInCurrentMonth)"
+                else -> "Tgl ${prof.paydayDayOfMonth}"
+            }
+
+            val (daysUntilPayday, nextPaydayMillis, isTodayPayday) = when {
+                currentDay == effectivePaydayThisMonth -> {
+                    Triple(0, todayZero.timeInMillis, true)
+                }
+                currentDay < effectivePaydayThisMonth -> {
+                    val nextPayCal = (todayZero.clone() as Calendar).apply {
+                        set(Calendar.DAY_OF_MONTH, effectivePaydayThisMonth)
+                    }
+                    val diff = ((nextPayCal.timeInMillis - todayZero.timeInMillis) / (1000L * 60 * 60 * 24)).toInt()
+                    Triple(diff.coerceAtLeast(1), nextPayCal.timeInMillis, false)
+                }
+                else -> {
+                    val nextMonthCal = (todayZero.clone() as Calendar).apply {
+                        add(Calendar.MONTH, 1)
+                        val maxInNext = getActualMaximum(Calendar.DAY_OF_MONTH)
+                        val nextPaydayDay = when (prof.paydayMode) {
+                            PaydayMode.START_OF_MONTH -> 1
+                            PaydayMode.END_OF_MONTH -> maxInNext
+                            else -> prof.paydayDayOfMonth.coerceIn(1, 31).coerceAtMost(maxInNext)
+                        }
+                        set(Calendar.DAY_OF_MONTH, nextPaydayDay)
+                    }
+                    val diff = ((nextMonthCal.timeInMillis - todayZero.timeInMillis) / (1000L * 60 * 60 * 24)).toInt()
+                    Triple(diff.coerceAtLeast(1), nextMonthCal.timeInMillis, false)
+                }
+            }
+
+            // Pay cycle progress (menyesuaikan siklus bulan)
+            val nominalCycle = if (prof.paydayMode == PaydayMode.END_OF_MONTH) maxDaysInCurrentMonth else 30
+            val cycleProgressPct = if (isTodayPayday) {
+                1.0f
+            } else {
+                ((nominalCycle - daysUntilPayday).coerceAtLeast(0).toFloat() / nominalCycle.toFloat()).coerceIn(0.05f, 0.95f)
+            }
+
+            // Safe Daily Flexible Limit: Synchronized with days until next payday
+            val daysToBudget = if (daysUntilPayday > 0) daysUntilPayday else daysRemaining
             val plannedEssentialTotal = budList.filter {
                 it.name.contains("pokok", ignoreCase = true) || it.name.contains("tagihan", ignoreCase = true)
             }.sumOf { it.plannedAmount }
             val remainingEssentialObligation = (plannedEssentialTotal - totalEssentialExpensesMonth).coerceAtLeast(0L)
             val availableForFlexible = (actualCash - remainingEssentialObligation).coerceAtLeast(0L)
-            val dailyLimit = availableForFlexible / daysRemaining
+            val dailyLimit = availableForFlexible / daysToBudget.coerceAtLeast(1)
             val isWarning = availableForFlexible <= 0L || actualCash < 100_000L
 
             val shortfall = if (totalReceivedSalaryMonth < plannedEssentialTotal && totalReceivedSalaryMonth > 0) {
@@ -201,7 +266,14 @@ object DashboardCalculator {
                 isDailyLimitWarning = isWarning,
                 pendingSalaryExists = pendingSalaryCount > 0,
                 unallocatedBonusCount = unallocatedBonuses,
-                essentialShortfall = shortfall
+                essentialShortfall = shortfall,
+                paydayDayOfMonth = effectivePaydayThisMonth,
+                paydayMode = prof.paydayMode,
+                paydayDescription = paydayDescription,
+                daysUntilNextPayday = daysUntilPayday,
+                nextPaydayDateMillis = nextPaydayMillis,
+                isPaydayToday = isTodayPayday,
+                payCycleProgressPct = cycleProgressPct
             )
         } catch (e: Throwable) {
             AppLogger.error("DashboardCalculator", "Gagal menghitung metrik dashboard: ${e.localizedMessage}", e)

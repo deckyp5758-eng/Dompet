@@ -6,6 +6,9 @@ import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -15,28 +18,41 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.AccountBalanceWallet
+import androidx.compose.material.icons.filled.Assessment
 import androidx.compose.material.icons.filled.BugReport
 import androidx.compose.material.icons.filled.CardGiftcard
+import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.MoreHoriz
+import androidx.compose.material.icons.filled.ReceiptLong
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Shield
+import androidx.compose.material.icons.filled.TrendingUp
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
-import androidx.compose.material3.NavigationDrawerItem
-import androidx.compose.material3.NavigationDrawerItemDefaults
+import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarResult
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
@@ -48,10 +64,14 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.core.logger.AppLogger
 import com.example.data.local.ExpenseEntity
@@ -61,6 +81,7 @@ import com.example.ui.components.AddExpenseDialog
 import com.example.ui.components.AddIncomeDialog
 import com.example.ui.components.BonusAllocationDialog
 import com.example.ui.components.DeleteConfirmDialog
+import com.example.ui.components.SalaryCustomizerDialog
 import com.example.ui.components.SystemDiagnosticsDialog
 import com.example.ui.navigation.MainDestination
 import com.example.ui.screens.BonusAllocationScreen
@@ -71,8 +92,13 @@ import com.example.ui.screens.InvestmentScreen
 import com.example.ui.screens.ReportsScreen
 import com.example.ui.screens.SettingsScreen
 import com.example.ui.screens.TransactionsScreen
+import com.example.ui.theme.AccentAmber
+import com.example.ui.theme.AccentIndigo
+import com.example.ui.theme.AccentRose
 import com.example.ui.theme.MyApplicationTheme
+import com.example.ui.theme.PrimaryEmerald
 import com.example.viewmodel.FinanceViewModel
+import java.util.Calendar
 
 class MainActivity : ComponentActivity() {
     private val viewModel: FinanceViewModel by viewModels()
@@ -123,7 +149,6 @@ fun MainAppContent(viewModel: FinanceViewModel) {
     val userMessage by viewModel.userMessage.collectAsStateWithLifecycle()
     val lastOperationError by viewModel.lastOperationError.collectAsStateWithLifecycle()
 
-    // Handle normal messages
     LaunchedEffect(userMessage) {
         userMessage?.let {
             snackbarHostState.showSnackbar(it)
@@ -131,11 +156,10 @@ fun MainAppContent(viewModel: FinanceViewModel) {
         }
     }
 
-    // Handle error notifications with quick action to open diagnostics
     LaunchedEffect(lastOperationError) {
         lastOperationError?.let { err ->
             val result = snackbarHostState.showSnackbar(
-                message = "Error: $err",
+                message = "Perhatian: $err",
                 actionLabel = "Lihat Detail",
                 duration = SnackbarDuration.Long
             )
@@ -146,7 +170,7 @@ fun MainAppContent(viewModel: FinanceViewModel) {
         }
     }
 
-    // Android Predictive / System Back Navigation Handler:
+    // Predictive back navigation: safely return to Home if on secondary tab
     if (currentDestinationIndex != 0) {
         BackHandler {
             currentDestinationIndex = 0
@@ -161,39 +185,76 @@ fun MainAppContent(viewModel: FinanceViewModel) {
         topBar = {
             TopAppBar(
                 title = {
-                    Column {
-                        Text(
-                            text = if (currentDestinationIndex == 0) "Dompet Pintar" else destinations[currentDestinationIndex].title,
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold
-                        )
-                        if (currentDestinationIndex != 0) {
-                            Text(
-                                text = "Kas Aktual: ${CurrencyFormatter.formatRupiah(summary.actualCashBalance)}",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.primary
-                            )
-                        } else {
-                            Text(
-                                text = "Aplikasi Keuangan Pribadi",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
+                    if (currentDestinationIndex == 0) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Surface(
+                                shape = RoundedCornerShape(12.dp),
+                                color = MaterialTheme.colorScheme.primaryContainer,
+                                modifier = Modifier.size(38.dp)
+                            ) {
+                                Box(contentAlignment = Alignment.Center) {
+                                    Text(
+                                        text = "DP",
+                                        fontWeight = FontWeight.ExtraBold,
+                                        fontSize = 15.sp,
+                                        color = MaterialTheme.colorScheme.primary
+                                    )
+                                }
+                            }
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Column {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Text(
+                                        text = "Dompet Pintar",
+                                        style = MaterialTheme.typography.titleMedium,
+                                        fontWeight = FontWeight.Bold,
+                                        color = MaterialTheme.colorScheme.onSurface
+                                    )
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Surface(
+                                        shape = RoundedCornerShape(6.dp),
+                                        color = if (summary.isPaydayToday) Color(0xFFD1FAE5) else Color(0xFFEEF2FF)
+                                    ) {
+                                        Text(
+                                            text = if (summary.isPaydayToday) "🎉 Gajian!" else "H-${summary.daysUntilNextPayday} Gajian",
+                                            fontSize = 10.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = if (summary.isPaydayToday) PrimaryEmerald else AccentIndigo,
+                                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                        )
+                                    }
+                                }
+                                Text(
+                                    text = CurrencyFormatter.formatDayMonth(Calendar.getInstance().timeInMillis) + " • " + CurrencyFormatter.formatMonthYear(Calendar.getInstance().timeInMillis),
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
                         }
+                    } else {
+                        Text(
+                            text = destinations[currentDestinationIndex].title,
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
                     }
                 },
                 navigationIcon = {
                     if (currentDestinationIndex != 0) {
                         IconButton(onClick = { currentDestinationIndex = 0 }) {
-                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Kembali ke Beranda")
+                            Icon(
+                                Icons.AutoMirrored.Filled.ArrowBack,
+                                contentDescription = "Kembali ke Beranda",
+                                tint = MaterialTheme.colorScheme.onSurface
+                            )
                         }
                     }
                 },
                 actions = {
-                    // Tombol Cepat Diagnostik & Pendeteksi Error Sistem
                     IconButton(
                         onClick = { showDiagnosticsDialog = true },
-                        modifier = Modifier.testTag("system_diagnostics_button")
+                        modifier = Modifier.testTag("top_diagnostics_button")
                     ) {
                         if (errorCount > 0) {
                             BadgedBox(
@@ -205,7 +266,7 @@ fun MainAppContent(viewModel: FinanceViewModel) {
                             ) {
                                 Icon(
                                     Icons.Default.BugReport,
-                                    contentDescription = "Diagnostik Error",
+                                    contentDescription = "Diagnostik Sistem",
                                     tint = MaterialTheme.colorScheme.error
                                 )
                             }
@@ -218,8 +279,15 @@ fun MainAppContent(viewModel: FinanceViewModel) {
                         }
                     }
 
-                    IconButton(onClick = { showMoreMenuSheet = true }) {
-                        Icon(Icons.Default.Menu, contentDescription = "Menu Navigasi")
+                    IconButton(
+                        onClick = { showMoreMenuSheet = true },
+                        modifier = Modifier.testTag("top_menu_button")
+                    ) {
+                        Icon(
+                            Icons.Default.Menu,
+                            contentDescription = "Semua Menu",
+                            tint = MaterialTheme.colorScheme.onSurface
+                        )
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -228,47 +296,89 @@ fun MainAppContent(viewModel: FinanceViewModel) {
             )
         },
         bottomBar = {
-            NavigationBar(modifier = Modifier.testTag("bottom_nav_bar")) {
+            NavigationBar(
+                modifier = Modifier.testTag("bottom_nav_bar"),
+                containerColor = MaterialTheme.colorScheme.surface,
+                tonalElevation = 4.dp
+            ) {
+                // 1. Beranda
                 NavigationBarItem(
                     selected = currentDestinationIndex == 0,
                     onClick = { currentDestinationIndex = 0 },
-                    icon = { Icon(destinations[0].icon, contentDescription = "Beranda") },
-                    label = { Text("Beranda") }
+                    icon = { Icon(Icons.Default.Home, contentDescription = "Beranda") },
+                    label = { Text("Beranda", fontSize = 11.sp, fontWeight = if (currentDestinationIndex == 0) FontWeight.Bold else FontWeight.Medium) },
+                    colors = NavigationBarItemDefaults.colors(
+                        indicatorColor = MaterialTheme.colorScheme.primaryContainer,
+                        selectedIconColor = MaterialTheme.colorScheme.primary,
+                        selectedTextColor = MaterialTheme.colorScheme.primary
+                    )
                 )
+
+                // 2. Transaksi
                 NavigationBarItem(
                     selected = currentDestinationIndex == 1,
                     onClick = { currentDestinationIndex = 1 },
-                    icon = { Icon(destinations[1].icon, contentDescription = "Transaksi") },
-                    label = { Text("Transaksi") }
+                    icon = { Icon(Icons.Default.ReceiptLong, contentDescription = "Transaksi") },
+                    label = { Text("Transaksi", fontSize = 11.sp, fontWeight = if (currentDestinationIndex == 1) FontWeight.Bold else FontWeight.Medium) },
+                    colors = NavigationBarItemDefaults.colors(
+                        indicatorColor = MaterialTheme.colorScheme.primaryContainer,
+                        selectedIconColor = MaterialTheme.colorScheme.primary,
+                        selectedTextColor = MaterialTheme.colorScheme.primary
+                    )
                 )
+
+                // 3. Anggaran
                 NavigationBarItem(
                     selected = currentDestinationIndex == 2,
                     onClick = { currentDestinationIndex = 2 },
-                    icon = { Icon(destinations[2].icon, contentDescription = "Anggaran") },
-                    label = { Text("Anggaran") }
+                    icon = { Icon(Icons.Default.AccountBalanceWallet, contentDescription = "Anggaran") },
+                    label = { Text("Anggaran", fontSize = 11.sp, fontWeight = if (currentDestinationIndex == 2) FontWeight.Bold else FontWeight.Medium) },
+                    colors = NavigationBarItemDefaults.colors(
+                        indicatorColor = MaterialTheme.colorScheme.primaryContainer,
+                        selectedIconColor = MaterialTheme.colorScheme.primary,
+                        selectedTextColor = MaterialTheme.colorScheme.primary
+                    )
                 )
+
+                // 4. Bonus
                 NavigationBarItem(
                     selected = currentDestinationIndex == 3,
                     onClick = { currentDestinationIndex = 3 },
                     icon = {
                         if (summary.unallocatedBonusCount > 0) {
-                            BadgedBox(badge = { Badge { Text("${summary.unallocatedBonusCount}") } }) {
+                            BadgedBox(badge = { Badge(containerColor = AccentAmber) { Text("${summary.unallocatedBonusCount}") } }) {
                                 Icon(Icons.Default.CardGiftcard, contentDescription = "Bonus")
                             }
                         } else {
                             Icon(Icons.Default.CardGiftcard, contentDescription = "Bonus")
                         }
                     },
-                    label = { Text("Bonus") }
+                    label = { Text("Bonus", fontSize = 11.sp, fontWeight = if (currentDestinationIndex == 3) FontWeight.Bold else FontWeight.Medium) },
+                    colors = NavigationBarItemDefaults.colors(
+                        indicatorColor = MaterialTheme.colorScheme.primaryContainer,
+                        selectedIconColor = MaterialTheme.colorScheme.primary,
+                        selectedTextColor = MaterialTheme.colorScheme.primary
+                    )
                 )
+
+                // 5. Lainnya (Darurat, Investasi, Laporan, Pengaturan)
                 val isSecondarySelected = currentDestinationIndex >= 4
                 NavigationBarItem(
                     selected = isSecondarySelected,
                     onClick = { showMoreMenuSheet = true },
                     icon = { Icon(Icons.Default.MoreHoriz, contentDescription = "Lainnya") },
                     label = {
-                        Text(if (isSecondarySelected) destinations[currentDestinationIndex].title else "Lainnya")
-                    }
+                        Text(
+                            text = if (isSecondarySelected) destinations[currentDestinationIndex].title else "Lainnya",
+                            fontSize = 11.sp,
+                            fontWeight = if (isSecondarySelected) FontWeight.Bold else FontWeight.Medium
+                        )
+                    },
+                    colors = NavigationBarItemDefaults.colors(
+                        indicatorColor = MaterialTheme.colorScheme.primaryContainer,
+                        selectedIconColor = MaterialTheme.colorScheme.primary,
+                        selectedTextColor = MaterialTheme.colorScheme.primary
+                    )
                 )
             }
         }
@@ -386,11 +496,13 @@ fun MainAppContent(viewModel: FinanceViewModel) {
         }
     }
 
-    // Modal Bottom Sheet for "Lainnya" / Full Menu
+    // Modern Modal Bottom Sheet untuk Semua Menu Navigasi & Fitur
     if (showMoreMenuSheet) {
         ModalBottomSheet(
             onDismissRequest = { showMoreMenuSheet = false },
-            sheetState = rememberModalBottomSheetState()
+            sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+            shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
+            containerColor = MaterialTheme.colorScheme.surface
         ) {
             Column(
                 modifier = Modifier
@@ -398,52 +510,147 @@ fun MainAppContent(viewModel: FinanceViewModel) {
                     .padding(horizontal = 20.dp, vertical = 8.dp)
             ) {
                 Text(
-                    text = "Semua Menu Dompet Pintar",
+                    text = "Semua Fitur Dompet Pintar",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.primary
                 )
-                Spacer(modifier = Modifier.height(12.dp))
+                Text(
+                    text = "Akses cepat ke seluruh modul pengelolaan keuangan",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
 
-                destinations.forEachIndexed { index, dest ->
-                    NavigationDrawerItem(
-                        icon = { Icon(dest.icon, contentDescription = null) },
-                        label = { Text(dest.title) },
-                        selected = currentDestinationIndex == index,
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Feature grid / cards
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    MenuTile(
+                        icon = Icons.Default.Shield,
+                        title = "Dana Darurat",
+                        subtitle = CurrencyFormatter.formatRupiah(summary.emergencyFundBalance),
+                        color = PrimaryEmerald,
+                        bgColor = Color(0xFFECFDF5),
+                        isSelected = currentDestinationIndex == 4,
+                        modifier = Modifier.weight(1f),
                         onClick = {
-                            currentDestinationIndex = index
+                            currentDestinationIndex = 4
                             showMoreMenuSheet = false
-                        },
-                        modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
+                        }
+                    )
+
+                    MenuTile(
+                        icon = Icons.Default.TrendingUp,
+                        title = "Investasi",
+                        subtitle = CurrencyFormatter.formatRupiah(summary.investmentCurrentValue),
+                        color = AccentIndigo,
+                        bgColor = Color(0xFFEEF2FF),
+                        isSelected = currentDestinationIndex == 5,
+                        modifier = Modifier.weight(1f),
+                        onClick = {
+                            currentDestinationIndex = 5
+                            showMoreMenuSheet = false
+                        }
                     )
                 }
 
-                // Item khusus diagnostik & log
-                NavigationDrawerItem(
-                    icon = {
-                        Icon(
-                            Icons.Default.BugReport,
-                            contentDescription = null,
-                            tint = if (errorCount > 0) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary
-                        )
-                    },
-                    label = {
-                        Row {
-                            Text("Diagnostik & Log Sistem")
-                            if (errorCount > 0) {
-                                Text(" ($errorCount Error)", color = MaterialTheme.colorScheme.error, fontWeight = FontWeight.Bold)
+                Spacer(modifier = Modifier.height(10.dp))
+
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    MenuTile(
+                        icon = Icons.Default.Assessment,
+                        title = "Laporan",
+                        subtitle = "Arus kas & grafik",
+                        color = Color(0xFF2563EB),
+                        bgColor = Color(0xFFEFF6FF),
+                        isSelected = currentDestinationIndex == 6,
+                        modifier = Modifier.weight(1f),
+                        onClick = {
+                            currentDestinationIndex = 6
+                            showMoreMenuSheet = false
+                        }
+                    )
+
+                    MenuTile(
+                        icon = Icons.Default.Settings,
+                        title = "Pengaturan",
+                        subtitle = "Profil, gaji, & data",
+                        color = Color(0xFF475569),
+                        bgColor = Color(0xFFF1F5F9),
+                        isSelected = currentDestinationIndex == 7,
+                        modifier = Modifier.weight(1f),
+                        onClick = {
+                            currentDestinationIndex = 7
+                            showMoreMenuSheet = false
+                        }
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                // Item khusus diagnostik & pemecahan error
+                Card(
+                    shape = RoundedCornerShape(14.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = if (errorCount > 0) Color(0xFFFFF1F2) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                    ),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(14.dp))
+                        .clickable {
+                            showMoreMenuSheet = false
+                            showDiagnosticsDialog = true
+                        }
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(14.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Surface(
+                            shape = CircleShape,
+                            color = if (errorCount > 0) Color(0xFFFFE4E6) else Color(0xFFDBEAFE),
+                            modifier = Modifier.size(36.dp)
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(
+                                    Icons.Default.BugReport,
+                                    contentDescription = null,
+                                    tint = if (errorCount > 0) AccentRose else Color(0xFF2563EB),
+                                    modifier = Modifier.size(18.dp)
+                                )
                             }
                         }
-                    },
-                    selected = false,
-                    onClick = {
-                        showMoreMenuSheet = false
-                        showDiagnosticsDialog = true
-                    },
-                    modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
-                )
 
-                Spacer(modifier = Modifier.height(24.dp))
+                        Spacer(modifier = Modifier.width(12.dp))
+
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "Diagnostik & Log Sistem",
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Text(
+                                text = if (errorCount > 0) "$errorCount error tercatat" else "Sistem berjalan normal",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = if (errorCount > 0) AccentRose else MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+
+                        if (errorCount > 0) {
+                            Badge(containerColor = AccentRose) {
+                                Text("$errorCount")
+                            }
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(28.dp))
             }
         }
     }
@@ -459,7 +666,7 @@ fun MainAppContent(viewModel: FinanceViewModel) {
         )
     }
 
-    // Global Action Dialogs
+    // Dialog Tambah / Edit Pendapatan
     if (showAddIncomeDialog) {
         AddIncomeDialog(
             initialIncome = incomeToEdit,
@@ -487,6 +694,7 @@ fun MainAppContent(viewModel: FinanceViewModel) {
         )
     }
 
+    // Dialog Tambah Pengeluaran
     if (showAddExpenseDialog) {
         AddExpenseDialog(
             onDismiss = { showAddExpenseDialog = false },
@@ -497,6 +705,7 @@ fun MainAppContent(viewModel: FinanceViewModel) {
         )
     }
 
+    // Dialog Alokasi Bonus
     bonusForAllocation?.let { bonus ->
         val plan = viewModel.getBonusAllocationRecommendation(bonus.amount)
         BonusAllocationDialog(
@@ -511,6 +720,7 @@ fun MainAppContent(viewModel: FinanceViewModel) {
         )
     }
 
+    // Dialog Konfirmasi Hapus Pendapatan
     incomeToDelete?.let { inc ->
         DeleteConfirmDialog(
             itemDescription = "Pendapatan: ${inc.source} (${CurrencyFormatter.formatRupiah(inc.amount)})",
@@ -522,6 +732,7 @@ fun MainAppContent(viewModel: FinanceViewModel) {
         )
     }
 
+    // Dialog Konfirmasi Hapus Pengeluaran
     expenseToDelete?.let { exp ->
         DeleteConfirmDialog(
             itemDescription = "Pengeluaran: ${exp.category} (${CurrencyFormatter.formatRupiah(exp.amount)})",
@@ -531,5 +742,56 @@ fun MainAppContent(viewModel: FinanceViewModel) {
                 expenseToDelete = null
             }
         )
+    }
+
+    // Dialog Sesuaikan Gaji Bulanan
+    if (showSalaryCustomizerDialog) {
+        val currentSalary = profile?.monthlySalary ?: 2_700_000L
+        SalaryCustomizerDialog(
+            currentSalary = currentSalary,
+            onDismiss = { showSalaryCustomizerDialog = false },
+            onApply = { newSalary, preset ->
+                viewModel.updateMonthlySalary(newSalary, preset)
+                showSalaryCustomizerDialog = false
+            }
+        )
+    }
+}
+
+@Composable
+fun MenuTile(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    title: String,
+    subtitle: String,
+    color: Color,
+    bgColor: Color,
+    isSelected: Boolean,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit
+) {
+    Card(
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = if (isSelected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+        ),
+        modifier = modifier
+            .clip(RoundedCornerShape(16.dp))
+            .clickable(onClick = onClick)
+    ) {
+        Column(modifier = Modifier.padding(14.dp)) {
+            Surface(
+                shape = CircleShape,
+                color = bgColor,
+                modifier = Modifier.size(36.dp)
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(icon, contentDescription = null, tint = color, modifier = Modifier.size(18.dp))
+                }
+            }
+            Spacer(modifier = Modifier.height(10.dp))
+            Text(text = title, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+            Spacer(modifier = Modifier.height(2.dp))
+            Text(text = subtitle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
+        }
     }
 }

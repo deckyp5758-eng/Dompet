@@ -13,6 +13,7 @@ import com.example.data.local.FinanceDao
 import com.example.data.local.IncomeEntity
 import com.example.data.local.InvestmentAssetEntity
 import com.example.data.local.InvestmentTxEntity
+import com.example.data.local.PaydayMode
 import com.example.data.local.ProfileEntity
 import com.example.data.repository.FinanceRepository
 import org.junit.Assert.assertEquals
@@ -162,6 +163,68 @@ class FinanceCalculationTest {
         assertEquals(0L, summary.totalNetWorth)
         assertEquals(1, summary.emergencyStage)
         assertEquals(2_500_000L, summary.totalPlannedSalaryMonth)
+    }
+
+    @Test
+    fun `test payday countdown calculation when today is before payday`() {
+        // Mock reference calendar: October 10, 2026
+        val cal = Calendar.getInstance().apply {
+            set(2026, Calendar.OCTOBER, 10, 10, 0, 0)
+        }
+        val summary = DashboardCalculator.calculate(
+            prof = ProfileEntity(monthlySalary = 3_000_000L, paydayMode = PaydayMode.SPECIFIC_DAY, paydayDayOfMonth = 25),
+            incList = emptyList(),
+            expList = emptyList(),
+            efList = emptyList(),
+            invList = emptyList(),
+            budList = emptyList(),
+            referenceCalendar = cal
+        )
+
+        assertEquals(25, summary.paydayDayOfMonth)
+        assertEquals(15, summary.daysUntilNextPayday) // 25 - 10 = 15
+        assertFalse(summary.isPaydayToday)
+    }
+
+    @Test
+    fun `test payday countdown calculation when today is exactly payday`() {
+        // Mock reference calendar: October 25, 2026
+        val cal = Calendar.getInstance().apply {
+            set(2026, Calendar.OCTOBER, 25, 8, 30, 0)
+        }
+        val summary = DashboardCalculator.calculate(
+            prof = ProfileEntity(monthlySalary = 3_000_000L, paydayMode = PaydayMode.SPECIFIC_DAY, paydayDayOfMonth = 25),
+            incList = emptyList(),
+            expList = emptyList(),
+            efList = emptyList(),
+            invList = emptyList(),
+            budList = emptyList(),
+            referenceCalendar = cal
+        )
+
+        assertEquals(0, summary.daysUntilNextPayday)
+        assertTrue(summary.isPaydayToday)
+    }
+
+    @Test
+    fun `test payday countdown calculation when today is after payday wrapping to next month`() {
+        // Mock reference calendar: October 28, 2026 (October has 31 days)
+        val cal = Calendar.getInstance().apply {
+            set(2026, Calendar.OCTOBER, 28, 12, 0, 0)
+        }
+        val summary = DashboardCalculator.calculate(
+            prof = ProfileEntity(monthlySalary = 3_000_000L, paydayMode = PaydayMode.SPECIFIC_DAY, paydayDayOfMonth = 25),
+            incList = emptyList(),
+            expList = emptyList(),
+            efList = emptyList(),
+            invList = emptyList(),
+            budList = emptyList(),
+            referenceCalendar = cal
+        )
+
+        // 3 days left in October (29, 30, 31) + 25 days in November = 28 days
+        assertEquals(28, summary.daysUntilNextPayday)
+        assertFalse(summary.isPaydayToday)
     }
 
     @Test
