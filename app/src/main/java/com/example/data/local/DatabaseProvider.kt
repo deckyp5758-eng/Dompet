@@ -21,6 +21,10 @@ object DatabaseProvider {
         }
     }
 
+    fun provideDatabase(): AppDatabase {
+        return databaseInstance ?: throw IllegalStateException("Database not initialized. Call provideDatabase(context) first.")
+    }
+
     /**
      * Menyediakan TransactionDao untuk riwayat transaksi.
      */

@@ -42,7 +42,10 @@ data class DashboardSummary(
     val daysUntilNextPayday: Int = 0,
     val nextPaydayDateMillis: Long = 0L,
     val isPaydayToday: Boolean = false,
-    val payCycleProgressPct: Float = 0f
+    val payCycleProgressPct: Float = 0f,
+    val totalSavingsBalance: Long = 0L,
+    val initialSavings: Long = 0L,
+    val initialDebt: Long = 0L
 )
 
 /**
@@ -59,6 +62,7 @@ object DashboardCalculator {
         efList: List<EmergencyFundEntity>,
         invList: List<InvestmentAssetEntity>,
         budList: List<BudgetCategoryEntity>,
+        savingsGoals: List<com.example.data.local.SavingsGoalEntity> = emptyList(),
         referenceCalendar: Calendar = Calendar.getInstance()
     ): DashboardSummary {
         try {
@@ -148,12 +152,18 @@ object DashboardCalculator {
             val invGainLoss = invValue - invCapital
             val invGainLossPct = if (invCapital > 0) ((invGainLoss.toFloat() / invCapital) * 100f) else 0f
 
-            // Actual Liquid Cash Balance
-            // Cash = Total Received Incomes - Total Expenses - EF Deposits + EF Withdrawals - Inv Capital
-            val actualCash = (totalReceivedAllTime - totalExpensesAllTime - emergencyBalance - invCapital)
+            // Total tabungan yang teralokasi ke target finansial
+            val totalSavingsAmount = savingsGoals.sumOf { it.currentAmount }
+            val initialSavings = prof.initialSavings
+            val initialDebt = prof.initialDebt
+
+            // Saldo Kas Aktual = Saldo Awal + Total Pendapatan Diterima - Total Pengeluaran Dibayar - Dana Darurat - Modal Investasi - Tabungan
+            val actualCash = (initialSavings + totalReceivedAllTime - totalExpensesAllTime - emergencyBalance - invCapital - totalSavingsAmount)
                 .coerceAtLeast(0L)
 
-            val totalNetWorth = actualCash + emergencyBalance + invValue
+            // Nilai total kekayaan bersih (Net Worth) = Saldo Kas Aktual + Saldo Dana Darurat + Nilai Pasar Investasi + Saldo Tabungan - Hutang
+            val totalNetWorth = (actualCash + emergencyBalance + invValue + totalSavingsAmount - initialDebt)
+                .coerceAtLeast(0L)
 
             // Emergency Fund Target
             val initialTarget = 1_000_000L
@@ -273,7 +283,10 @@ object DashboardCalculator {
                 daysUntilNextPayday = daysUntilPayday,
                 nextPaydayDateMillis = nextPaydayMillis,
                 isPaydayToday = isTodayPayday,
-                payCycleProgressPct = cycleProgressPct
+                payCycleProgressPct = cycleProgressPct,
+                totalSavingsBalance = totalSavingsAmount,
+                initialSavings = initialSavings,
+                initialDebt = initialDebt
             )
         } catch (e: Throwable) {
             AppLogger.error("DashboardCalculator", "Gagal menghitung metrik dashboard: ${e.localizedMessage}", e)

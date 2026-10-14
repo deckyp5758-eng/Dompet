@@ -12,11 +12,11 @@ object PaydayMode {
 @Entity(tableName = "user_profile")
 data class ProfileEntity(
     @PrimaryKey val id: Int = 1,
-    val monthlySalary: Long = 2_700_000L,
-    val livingSituation: String = "Tinggal bersama keluarga",
+    val monthlySalary: Long = 0L,
+    val livingSituation: String = "",
     val initialSavings: Long = 0L,
     val initialDebt: Long = 0L,
-    val financialPriority: String = "Investasi jangka panjang",
+    val financialPriority: String = "",
     val emergencyTargetMonths: Int = 3,
     val currency: String = "IDR",
     val timezone: String = "Asia/Jakarta",

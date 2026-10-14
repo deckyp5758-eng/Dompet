@@ -49,9 +49,6 @@ class FinanceRepository(val dao: FinanceDao) {
     suspend fun insertIncome(income: IncomeEntity): AppResult<Long> {
         return runCatchingApp("insertIncome") {
             val id = dao.insertIncome(income)
-            if (income.incomeType == "GAJI_TETAP") {
-                applySalaryAndBudgetPreset(income.amount, null)
-            }
             AppLogger.info("FinanceRepository", "Pendapatan baru ditambahkan [ID $id]: ${income.source} (${income.amount})")
             id
         }.onFailure {
@@ -449,7 +446,11 @@ class FinanceRepository(val dao: FinanceDao) {
         return DataBackupManager.restoreDataFromJson(dao, jsonString)
     }
 
-    suspend fun resetToDemoData(): AppResult<Unit> {
+    suspend fun resetToDemoData(
+        transactionDao: com.example.data.local.TransactionDao? = null,
+        monthlyBudgetDao: com.example.data.local.MonthlyBudgetDao? = null,
+        savingsGoalDao: com.example.data.local.SavingsGoalDao? = null
+    ): AppResult<Unit> {
         return runCatchingApp("resetToDemoData") {
             dao.clearIncomes()
             dao.clearExpenses()
@@ -457,8 +458,11 @@ class FinanceRepository(val dao: FinanceDao) {
             dao.clearInvestmentAssets()
             dao.clearInvestmentTransactions()
             dao.clearBudgetCategories()
+            transactionDao?.clearAllTransactions()
+            monthlyBudgetDao?.clearAllMonthlyBudgets()
+            savingsGoalDao?.clearAllSavingsGoals()
 
-            AppDatabase.populateInitialData(dao)
+            AppDatabase.populateDemoData(dao, transactionDao, monthlyBudgetDao, savingsGoalDao)
 
             val now = System.currentTimeMillis()
             val cal = Calendar.getInstance()
@@ -498,6 +502,7 @@ class FinanceRepository(val dao: FinanceDao) {
                 )
             )
 
+            cal.add(Calendar.DAY_OF_MONTH, 2)
             dao.insertExpense(
                 ExpenseEntity(
                     dateMillis = cal.timeInMillis,
@@ -508,6 +513,7 @@ class FinanceRepository(val dao: FinanceDao) {
                 )
             )
 
+            cal.add(Calendar.DAY_OF_MONTH, 1)
             dao.insertExpense(
                 ExpenseEntity(
                     dateMillis = cal.timeInMillis,
@@ -548,21 +554,43 @@ class FinanceRepository(val dao: FinanceDao) {
                     notes = "Setoran rutin dari gaji"
                 )
             )
-            AppLogger.info("FinanceRepository", "Data demo berhasil dimuat ulang")
+            AppLogger.info("FinanceRepository", "Data demo berhasil dimuat secara manual oleh pengguna")
         }.onFailure {
             AppLogger.error("FinanceRepository", "Gagal memuat data demo: ${it.message}", it.throwable)
         }
     }
 
-    suspend fun clearAllTransactions(): AppResult<Unit> {
+    suspend fun clearAllTransactions(
+        transactionDao: com.example.data.local.TransactionDao? = null,
+        monthlyBudgetDao: com.example.data.local.MonthlyBudgetDao? = null,
+        savingsGoalDao: com.example.data.local.SavingsGoalDao? = null
+    ): AppResult<Unit> {
         return runCatchingApp("clearAllTransactions") {
             dao.clearIncomes()
             dao.clearExpenses()
             dao.clearEmergencyFund()
             dao.clearInvestmentAssets()
             dao.clearInvestmentTransactions()
-            AppDatabase.populateInitialData(dao)
-            AppLogger.info("FinanceRepository", "Semua data transaksi dibersihkan ke kondisi awal bersih")
+            dao.clearBudgetCategories()
+            transactionDao?.clearAllTransactions()
+            monthlyBudgetDao?.clearAllMonthlyBudgets()
+            savingsGoalDao?.clearAllSavingsGoals()
+            dao.insertProfile(
+                ProfileEntity(
+                    id = 1,
+                    monthlySalary = 0L,
+                    livingSituation = "",
+                    initialSavings = 0L,
+                    initialDebt = 0L,
+                    financialPriority = "",
+                    emergencyTargetMonths = 3,
+                    currency = "IDR",
+                    timezone = "Asia/Jakarta",
+                    paydayMode = com.example.data.local.PaydayMode.END_OF_MONTH,
+                    paydayDayOfMonth = 25
+                )
+            )
+            AppLogger.info("FinanceRepository", "Semua data transaksi berhasil dibersihkan ke kondisi awal Rp0")
         }.onFailure {
             AppLogger.error("FinanceRepository", "Gagal membersihkan transaksi: ${it.message}", it.throwable)
         }
