@@ -112,6 +112,10 @@ class FinanceRepository(val dao: FinanceDao) {
         }
     }
 
+    suspend fun getLatestSalary(): Long {
+        return dao.getLatestReceivedIncomeByType("GAJI_TETAP")?.amount ?: 0L
+    }
+
     suspend fun insertExpense(expense: ExpenseEntity): AppResult<Long> {
         return runCatchingApp("insertExpense") {
             val id = dao.insertExpense(expense)
@@ -161,6 +165,7 @@ class FinanceRepository(val dao: FinanceDao) {
 
     suspend fun applySalaryAndBudgetPreset(newSalary: Long, preset: BudgetPreset?): AppResult<Unit> {
         return runCatchingApp("applySalaryAndBudgetPreset") {
+            AppLogger.info("FinanceRepository", "Applying salary $newSalary with preset $preset")
             val currentProfile = getProfileSync()
             dao.insertProfile(currentProfile.copy(monthlySalary = newSalary))
             dao.updatePendingSalaryAmount(newSalary)

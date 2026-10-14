@@ -37,6 +37,9 @@ class FinanceViewModel(application: Application) : AndroidViewModel(application)
         val db = com.example.data.local.DatabaseProvider.provideDatabase(application)
         repository = FinanceRepository(db.financeDao())
         AppLogger.info("FinanceViewModel", "FinanceViewModel berhasil diinisialisasi dengan DatabaseProvider")
+        viewModelScope.launch {
+            _latestSalary.value = repository.getLatestSalary()
+        }
     }
 
     val profile: StateFlow<ProfileEntity?> = repository.profile.stateIn(
@@ -62,6 +65,9 @@ class FinanceViewModel(application: Application) : AndroidViewModel(application)
         SharingStarted.WhileSubscribed(5000),
         emptyList()
     )
+
+    private val _latestSalary = MutableStateFlow(0L)
+    val latestSalary: StateFlow<Long> = _latestSalary.asStateFlow()
 
     val emergencyFundEntries: StateFlow<List<EmergencyFundEntity>> = repository.allEmergencyFundEntries.stateIn(
         viewModelScope,

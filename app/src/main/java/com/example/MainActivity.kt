@@ -141,6 +141,7 @@ fun MainAppContent(viewModel: FinanceViewModel) {
     val investmentAssets by viewModel.investmentAssets.collectAsStateWithLifecycle()
     val investmentTx by viewModel.investmentTransactions.collectAsStateWithLifecycle()
     val summary by viewModel.dashboardSummary.collectAsStateWithLifecycle()
+    val latestSalary by viewModel.latestSalary.collectAsStateWithLifecycle()
 
     val errorCount by viewModel.errorCount.collectAsStateWithLifecycle()
     val logEntries by viewModel.logEntries.collectAsStateWithLifecycle()
@@ -440,10 +441,15 @@ fun MainAppContent(viewModel: FinanceViewModel) {
                     budgetCategories = budgetCategories,
                     expenses = expenses,
                     profile = profile ?: com.example.data.local.ProfileEntity(),
+                    latestSalary = latestSalary,
                     isSalaryReceivedThisMonth = summary.totalReceivedSalaryMonth > 0,
                     onCustomizeSalaryClick = { showSalaryCustomizerDialog = true },
-                    onSaveBudgetCategories = { updatedList ->
-                        viewModel.updateBudgetCategories(updatedList)
+                    onSaveBudgetCategories = { updatedList, newSalary ->
+                        if (updatedList.isEmpty()) {
+                            viewModel.updateMonthlySalary(newSalary, com.example.data.model.BudgetPreset.DOMPET_PINTAR)
+                        } else {
+                            viewModel.updateBudgetCategories(updatedList)
+                        }
                     }
                 )
 

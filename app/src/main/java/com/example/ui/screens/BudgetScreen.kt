@@ -54,6 +54,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.core.logger.AppLogger
 import com.example.data.local.BudgetCategoryEntity
 import com.example.data.local.ExpenseEntity
 import com.example.data.local.ProfileEntity
@@ -68,9 +69,10 @@ fun BudgetScreen(
     budgetCategories: List<BudgetCategoryEntity>,
     expenses: List<ExpenseEntity>,
     profile: ProfileEntity,
+    latestSalary: Long,
     isSalaryReceivedThisMonth: Boolean,
     onCustomizeSalaryClick: () -> Unit,
-    onSaveBudgetCategories: (List<BudgetCategoryEntity>) -> Unit
+    onSaveBudgetCategories: (List<BudgetCategoryEntity>, Long) -> Unit
 ) {
     var showEditDialog by remember { mutableStateOf(false) }
 
@@ -91,6 +93,35 @@ fun BudgetScreen(
     ) {
         item {
             Spacer(modifier = Modifier.height(4.dp))
+            
+            // Smart Allocation Card
+            val showSmartCard = latestSalary > 0L && latestSalary != monthlySalary
+            AppLogger.info("BudgetScreen", "SmartCard check: latestSalary=$latestSalary, monthlySalary=$monthlySalary, show=$showSmartCard")
+            if (showSmartCard) {
+                Card(
+                    shape = RoundedCornerShape(20.dp),
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFFEFF6FF)),
+                    modifier = Modifier.fillMaxWidth().testTag("smart_budget_card")
+                ) {
+                    Column(modifier = Modifier.padding(18.dp)) {
+                        Text(text = "💡 Alokasi Cerdas", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = Color(0xFF1E3A8A))
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(text = "Gaji terakhir: ${CurrencyFormatter.formatRupiah(latestSalary)}. Terapkan sebagai anggaran baru?", style = MaterialTheme.typography.bodySmall, color = Color(0xFF3B82F6))
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Button(
+                            onClick = {
+                                AppLogger.info("BudgetScreen", "Applying smart budget with salary: $latestSalary")
+                                onSaveBudgetCategories(emptyList(), latestSalary)
+                            },
+                            shape = RoundedCornerShape(12.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2563EB))
+                        ) {
+                            Text("Terapkan Alokasi Otomatis")
+                        }
+                    }
+                }
+                Spacer(modifier = Modifier.height(14.dp))
+            }
 
             // Header Info & Quick Salary Customizer
             Row(
@@ -350,7 +381,7 @@ fun BudgetScreen(
             salary = monthlySalary,
             onDismiss = { showEditDialog = false },
             onSave = { updatedList ->
-                onSaveBudgetCategories(updatedList)
+                onSaveBudgetCategories(updatedList, monthlySalary)
                 showEditDialog = false
             }
         )

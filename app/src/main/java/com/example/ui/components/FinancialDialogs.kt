@@ -26,6 +26,7 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Payments
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.AlertDialog
+import com.example.core.logger.AppLogger
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -44,6 +45,7 @@ import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableDoubleStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -642,13 +644,19 @@ fun BonusAllocationDialog(
 ) {
     val bonusAmount = bonusIncome.amount
 
-    var daruratPct by remember { mutableDoubleStateOf(plan.emergencyFundPct) }
-    var investPct by remember { mutableDoubleStateOf(plan.investmentPct) }
-    var pribadiPct by remember { mutableDoubleStateOf(plan.personalSpendingPct) }
+    var daruratPct by remember(plan) { mutableDoubleStateOf(plan.emergencyFundPct) }
+    var investPct by remember(plan) { mutableDoubleStateOf(plan.investmentPct) }
+    var pribadiPct by remember(plan) { mutableDoubleStateOf(plan.personalSpendingPct) }
 
-    val calculatedDarurat = ((bonusAmount * daruratPct) / 100.0).toLong()
-    val calculatedInvest = ((bonusAmount * investPct) / 100.0).toLong()
-    val calculatedPribadi = (bonusAmount - calculatedDarurat - calculatedInvest).coerceAtLeast(0L)
+    val calculatedDarurat by remember(bonusAmount, daruratPct) {
+        derivedStateOf { ((bonusAmount * daruratPct) / 100.0).toLong() }
+    }
+    val calculatedInvest by remember(bonusAmount, investPct) {
+        derivedStateOf { ((bonusAmount * investPct) / 100.0).toLong() }
+    }
+    val calculatedPribadi by remember(bonusAmount, daruratPct, investPct) {
+        derivedStateOf { (bonusAmount - calculatedDarurat - calculatedInvest).coerceAtLeast(0L) }
+    }
 
     var selectedAssetId by remember { mutableStateOf<Long?>(availableAssets.firstOrNull()?.id) }
 
@@ -1624,6 +1632,7 @@ fun SalaryCustomizerDialog(
                                 errorMessage = "Gaji harus lebih dari Rp 0."
                                 return@Button
                             }
+                            AppLogger.info("SalaryCustomizerDialog", "Applying salary $numericSalary with preset $selectedPreset")
                             onApply(numericSalary, selectedPreset)
                         },
                         shape = RoundedCornerShape(12.dp),

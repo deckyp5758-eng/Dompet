@@ -39,6 +39,9 @@ interface FinanceDao {
     @Query("SELECT * FROM incomes WHERE id = :id LIMIT 1")
     suspend fun getIncomeById(id: Long): IncomeEntity?
 
+    @Query("SELECT * FROM incomes WHERE incomeType = :type AND status = 'DITERIMA' ORDER BY dateMillis DESC LIMIT 1")
+    suspend fun getLatestReceivedIncomeByType(type: String): IncomeEntity?
+
     @Query("SELECT * FROM incomes WHERE incomeType = 'GAJI_TETAP' AND status = 'BELUM_DITERIMA'")
     suspend fun getPendingSalaries(): List<IncomeEntity>
 
