@@ -265,13 +265,10 @@ class FinanceViewModel(application: Application) : AndroidViewModel(application)
         viewModelScope.launch {
             val summary = dashboardSummary.value
             if (type == "SETORAN" && amount > summary.actualCashBalance) {
-                val warn = "Peringatan: Saldo kas aktual tidak mencukupi untuk setor Rp $amount."
-                AppLogger.warn("FinanceViewModel", warn)
-                showMessage(warn)
-                return@launch
+                AppLogger.warn("FinanceViewModel", "Setoran Rp $amount dicatat. Saldo kas saat ini Rp ${summary.actualCashBalance} (dicatat sebagai dana awal/tambahan).")
             }
             if (type == "PENARIKAN" && amount > summary.emergencyFundBalance) {
-                val warn = "Peringatan: Saldo dana darurat tidak mencukupi untuk penarikan Rp $amount."
+                val warn = "Peringatan: Saldo dana darurat saat ini (Rp ${summary.emergencyFundBalance}) tidak mencukupi untuk penarikan Rp $amount."
                 AppLogger.warn("FinanceViewModel", warn)
                 showMessage(warn)
                 return@launch
@@ -313,10 +310,7 @@ class FinanceViewModel(application: Application) : AndroidViewModel(application)
         viewModelScope.launch {
             val summary = dashboardSummary.value
             if (initialCapital > summary.actualCashBalance) {
-                val warn = "Peringatan: Saldo kas aktual tidak mencukupi untuk investasi awal Rp $initialCapital."
-                AppLogger.warn("FinanceViewModel", warn)
-                showMessage(warn)
-                return@launch
+                AppLogger.warn("FinanceViewModel", "Aset $name dengan modal Rp $initialCapital dicatat (portofolio/modal awal). Saldo kas saat ini Rp ${summary.actualCashBalance}.")
             }
 
             repository.insertInvestmentAsset(
@@ -370,10 +364,7 @@ class FinanceViewModel(application: Application) : AndroidViewModel(application)
         viewModelScope.launch {
             val summary = dashboardSummary.value
             if (amount > summary.actualCashBalance) {
-                val warn = "Peringatan: Saldo kas aktual tidak mencukupi untuk setoran investasi Rp $amount."
-                AppLogger.warn("FinanceViewModel", warn)
-                showMessage(warn)
-                return@launch
+                AppLogger.warn("FinanceViewModel", "Setoran investasi Rp $amount dicatat. Saldo kas saat ini Rp ${summary.actualCashBalance}.")
             }
             val assets = investmentAssets.value
             val asset = assets.firstOrNull { it.id == assetId } ?: return@launch
