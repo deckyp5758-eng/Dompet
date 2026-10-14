@@ -42,6 +42,9 @@ class FinanceViewModel(application: Application) : AndroidViewModel(application)
         }
     }
 
+    private val _latestSalary = MutableStateFlow(0L)
+    val latestSalary: StateFlow<Long> = _latestSalary.asStateFlow()
+
     val profile: StateFlow<ProfileEntity?> = repository.profile.stateIn(
         viewModelScope,
         SharingStarted.WhileSubscribed(5000),
@@ -65,9 +68,6 @@ class FinanceViewModel(application: Application) : AndroidViewModel(application)
         SharingStarted.WhileSubscribed(5000),
         emptyList()
     )
-
-    private val _latestSalary = MutableStateFlow(0L)
-    val latestSalary: StateFlow<Long> = _latestSalary.asStateFlow()
 
     val emergencyFundEntries: StateFlow<List<EmergencyFundEntity>> = repository.allEmergencyFundEntries.stateIn(
         viewModelScope,
