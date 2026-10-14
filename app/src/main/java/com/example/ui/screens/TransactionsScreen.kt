@@ -345,27 +345,6 @@ fun TransactionsScreen(
                                 Spacer(modifier = Modifier.width(6.dp))
                                 Text("Reset Filter & Pencarian")
                             }
-                        } else {
-                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                Button(
-                                    onClick = onAddIncomeClick,
-                                    colors = ButtonDefaults.buttonColors(containerColor = PrimaryEmerald),
-                                    shape = RoundedCornerShape(12.dp)
-                                ) {
-                                    Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp))
-                                    Spacer(modifier = Modifier.width(4.dp))
-                                    Text("+ Pemasukan")
-                                }
-                                Button(
-                                    onClick = onAddExpenseClick,
-                                    colors = ButtonDefaults.buttonColors(containerColor = AccentRose),
-                                    shape = RoundedCornerShape(12.dp)
-                                ) {
-                                    Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp))
-                                    Spacer(modifier = Modifier.width(4.dp))
-                                    Text("+ Pengeluaran")
-                                }
-                            }
                         }
                     }
                 }
