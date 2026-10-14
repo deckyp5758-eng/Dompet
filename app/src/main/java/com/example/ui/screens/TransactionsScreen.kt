@@ -92,6 +92,7 @@ fun TransactionsScreen(
     onAddIncomeClick: () -> Unit,
     onAddExpenseClick: () -> Unit,
     onEditIncomeClick: (IncomeEntity) -> Unit,
+    onEditExpenseClick: (ExpenseEntity) -> Unit,
     onDeleteIncomeClick: (IncomeEntity) -> Unit,
     onDeleteExpenseClick: (ExpenseEntity) -> Unit,
     onToggleIncomeStatus: (Long) -> Unit,
@@ -299,28 +300,73 @@ fun TransactionsScreen(
                         .weight(1f),
                     contentAlignment = Alignment.Center
                 ) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        modifier = Modifier.padding(24.dp)
+                    ) {
                         Surface(
                             shape = CircleShape,
                             color = MaterialTheme.colorScheme.surfaceVariant,
-                            modifier = Modifier.size(60.dp)
+                            modifier = Modifier.size(64.dp)
                         ) {
                             Box(contentAlignment = Alignment.Center) {
                                 Icon(
                                     Icons.Default.ReceiptLong,
                                     contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    modifier = Modifier.size(30.dp)
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(32.dp)
                                 )
                             }
                         }
-                        Spacer(modifier = Modifier.height(12.dp))
+                        Spacer(modifier = Modifier.height(14.dp))
                         Text(
-                            text = if (searchQuery.isNotEmpty()) "Tidak ada transaksi yang cocok" else "Belum ada riwayat transaksi",
-                            style = MaterialTheme.typography.bodyMedium,
-                            fontWeight = FontWeight.Medium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            text = if (searchQuery.isNotEmpty() || selectedFilterCategory != "Semua") "Tidak ada transaksi yang cocok" else "Belum ada transaksi tercatat",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurface
                         )
+                        Spacer(modifier = Modifier.height(6.dp))
+                        Text(
+                            text = if (searchQuery.isNotEmpty() || selectedFilterCategory != "Semua") "Coba ubah kata kunci pencarian atau reset filter kategori." else "Mulai catat pemasukan atau pengeluaran harian Anda agar keuangan terpantau rapi.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                        )
+                        Spacer(modifier = Modifier.height(16.dp))
+                        if (searchQuery.isNotEmpty() || selectedFilterCategory != "Semua") {
+                            OutlinedButton(
+                                onClick = {
+                                    searchQuery = ""
+                                    selectedFilterCategory = "Semua"
+                                },
+                                shape = RoundedCornerShape(12.dp)
+                            ) {
+                                Icon(Icons.Default.Close, contentDescription = null, modifier = Modifier.size(16.dp))
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text("Reset Filter & Pencarian")
+                            }
+                        } else {
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                Button(
+                                    onClick = onAddIncomeClick,
+                                    colors = ButtonDefaults.buttonColors(containerColor = PrimaryEmerald),
+                                    shape = RoundedCornerShape(12.dp)
+                                ) {
+                                    Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp))
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text("+ Pemasukan")
+                                }
+                                Button(
+                                    onClick = onAddExpenseClick,
+                                    colors = ButtonDefaults.buttonColors(containerColor = AccentRose),
+                                    shape = RoundedCornerShape(12.dp)
+                                ) {
+                                    Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp))
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text("+ Pengeluaran")
+                                }
+                            }
+                        }
                     }
                 }
             } else {
@@ -330,7 +376,15 @@ fun TransactionsScreen(
                         .weight(1f),
                     verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
-                    items(filteredItems) { item ->
+                    items(
+                        items = filteredItems,
+                        key = { item ->
+                            when (item) {
+                                is TransactionItem.Income -> "inc_${item.entity.id}"
+                                is TransactionItem.Expense -> "exp_${item.entity.id}"
+                            }
+                        }
+                    ) { item ->
                         ModernTransactionTile(
                             item = item,
                             onClick = { selectedItemForDetail = item }
@@ -392,6 +446,10 @@ fun TransactionsScreen(
                     onEditIncome = {
                         selectedItemForDetail = null
                         if (item is TransactionItem.Income) onEditIncomeClick(item.entity)
+                    },
+                    onEditExpense = {
+                        selectedItemForDetail = null
+                        if (item is TransactionItem.Expense) onEditExpenseClick(item.entity)
                     },
                     onDeleteIncome = {
                         selectedItemForDetail = null
@@ -572,6 +630,7 @@ fun ModernTransactionTile(
 fun TransactionDetailSheetContent(
     item: TransactionItem,
     onEditIncome: () -> Unit,
+    onEditExpense: () -> Unit,
     onDeleteIncome: () -> Unit,
     onDeleteExpense: () -> Unit,
     onToggleIncomeStatus: () -> Unit,
@@ -683,15 +742,30 @@ fun TransactionDetailSheetContent(
 
                 Spacer(modifier = Modifier.height(20.dp))
 
-                Button(
-                    onClick = onDeleteExpense,
+                Row(
                     modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = AccentRose)
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
-                    Icon(Icons.Default.Delete, contentDescription = null, modifier = Modifier.size(16.dp))
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text("Hapus Pengeluaran Ini")
+                    OutlinedButton(
+                        onClick = onEditExpense,
+                        modifier = Modifier.weight(1f),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Icon(Icons.Default.Edit, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text("Ubah")
+                    }
+
+                    Button(
+                        onClick = onDeleteExpense,
+                        modifier = Modifier.weight(1f),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = AccentRose)
+                    ) {
+                        Icon(Icons.Default.Delete, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text("Hapus")
+                    }
                 }
             }
         }

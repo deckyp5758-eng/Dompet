@@ -3,6 +3,9 @@ package com.example.ui.screens
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
+import android.content.Intent
+import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.filled.Upload
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -76,6 +79,7 @@ fun SettingsScreen(
     onUpdateProfile: (ProfileEntity) -> Unit,
     onClearAllData: () -> Unit,
     onExportJson: suspend () -> String,
+    onRestoreJson: (String) -> Unit,
     onShowMessage: (String) -> Unit,
     onOpenDiagnostics: () -> Unit
 ) {
@@ -88,6 +92,8 @@ fun SettingsScreen(
     var paydayDayOfMonthText by remember(profile.paydayDayOfMonth) { mutableStateOf(profile.paydayDayOfMonth.toString()) }
     var targetMonthsText by remember(profile.emergencyTargetMonths) { mutableStateOf(profile.emergencyTargetMonths.toString()) }
     var showResetDialog by remember { mutableStateOf(false) }
+    var showRestoreDialog by remember { mutableStateOf(false) }
+    var restoreJsonInput by remember { mutableStateOf("") }
 
     val currentMaxDays = remember { Calendar.getInstance().getActualMaximum(Calendar.DAY_OF_MONTH) }
 
@@ -386,15 +392,38 @@ fun SettingsScreen(
                                 val jsonStr = onExportJson()
                                 val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
                                 clipboard.setPrimaryClip(ClipData.newPlainText("Backup Dompet Pintar", jsonStr))
+
+                                try {
+                                    val shareIntent = Intent(Intent.ACTION_SEND).apply {
+                                        type = "text/plain"
+                                        putExtra(Intent.EXTRA_SUBJECT, "Backup Dompet Pintar")
+                                        putExtra(Intent.EXTRA_TEXT, jsonStr)
+                                    }
+                                    context.startActivity(Intent.createChooser(shareIntent, "Bagikan / Simpan Cadangan Data"))
+                                } catch (e: Exception) {
+                                    // fallback if chooser fails
+                                }
                                 onShowMessage("Data berhasil diekspor & disalin ke clipboard!")
                             }
                         },
                         shape = RoundedCornerShape(12.dp),
                         modifier = Modifier.fillMaxWidth()
                     ) {
-                        Icon(Icons.Default.Download, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Icon(Icons.Default.Share, contentDescription = null, modifier = Modifier.size(16.dp))
                         Spacer(modifier = Modifier.width(6.dp))
-                        Text("Ekspor Cadangan Data (JSON)")
+                        Text("Ekspor & Bagikan Cadangan (JSON)")
+                    }
+
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    OutlinedButton(
+                        onClick = { showRestoreDialog = true },
+                        shape = RoundedCornerShape(12.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Icon(Icons.Default.Upload, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text("Pulihkan Data dari Cadangan")
                     }
 
                     Spacer(modifier = Modifier.height(10.dp))
@@ -460,6 +489,59 @@ fun SettingsScreen(
             },
             dismissButton = {
                 OutlinedButton(onClick = { showResetDialog = false }, shape = RoundedCornerShape(10.dp)) {
+                    Text("Batal")
+                }
+            }
+        )
+    }
+
+    if (showRestoreDialog) {
+        AlertDialog(
+            onDismissRequest = { showRestoreDialog = false },
+            icon = { Icon(Icons.Default.Upload, contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
+            title = { Text("Pulihkan Data dari Cadangan") },
+            text = {
+                Column {
+                    Text(
+                        text = "Tempel teks JSON cadangan yang telah Anda ekspor sebelumnya. Data saat ini akan digantikan dengan data cadangan secara atomik.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(modifier = Modifier.height(10.dp))
+                    OutlinedTextField(
+                        value = restoreJsonInput,
+                        onValueChange = { restoreJsonInput = it },
+                        placeholder = { Text("Tempel JSON cadangan di sini...") },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(140.dp),
+                        shape = RoundedCornerShape(12.dp)
+                    )
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        if (restoreJsonInput.isNotBlank()) {
+                            onRestoreJson(restoreJsonInput.trim())
+                            showRestoreDialog = false
+                            restoreJsonInput = ""
+                        }
+                    },
+                    enabled = restoreJsonInput.isNotBlank(),
+                    shape = RoundedCornerShape(10.dp)
+                ) {
+                    Text("Pulihkan Sekarang")
+                }
+            },
+            dismissButton = {
+                OutlinedButton(
+                    onClick = {
+                        showRestoreDialog = false
+                        restoreJsonInput = ""
+                    },
+                    shape = RoundedCornerShape(10.dp)
+                ) {
                     Text("Batal")
                 }
             }

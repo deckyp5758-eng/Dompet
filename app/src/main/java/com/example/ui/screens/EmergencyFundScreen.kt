@@ -262,18 +262,49 @@ fun EmergencyFundScreen(
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)),
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Box(modifier = Modifier.padding(24.dp), contentAlignment = Alignment.Center) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(24.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Surface(
+                            shape = CircleShape,
+                            color = Color(0xFFD1FAE5),
+                            modifier = Modifier.size(52.dp)
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(Icons.Default.Shield, contentDescription = null, tint = PrimaryEmerald, modifier = Modifier.size(26.dp))
+                            }
+                        }
+                        Spacer(modifier = Modifier.height(10.dp))
                         Text(
-                            text = "Belum ada transaksi dana darurat. Simpan dana untuk keamanan masa depan!",
-                            style = MaterialTheme.typography.bodyMedium,
+                            text = "Belum Ada Mutasi Dana Darurat",
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = "Mulai kumpulkan bantalan finansial untuk keamanan tak terduga.",
+                            style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Button(
+                            onClick = { showDialog = true },
+                            colors = ButtonDefaults.buttonColors(containerColor = PrimaryEmerald),
+                            shape = RoundedCornerShape(10.dp)
+                        ) {
+                            Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("Catat Setoran Pertama")
+                        }
                     }
                 }
             }
         } else {
-            items(entries) { entry ->
-                val isDeposit = entry.type == "SETOR"
+            items(entries, key = { it.id }) { entry ->
+                val isDeposit = entry.type.startsWith("SETOR", ignoreCase = true)
                 Card(
                     shape = RoundedCornerShape(16.dp),
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),

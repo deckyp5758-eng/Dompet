@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -29,6 +30,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
@@ -60,6 +62,7 @@ import com.example.ui.theme.AccentIndigo
 import com.example.ui.theme.AccentRose
 import com.example.ui.theme.PrimaryEmerald
 import com.example.viewmodel.DashboardSummary
+import java.util.Calendar
 
 @Composable
 fun ReportsScreen(
@@ -70,17 +73,65 @@ fun ReportsScreen(
     onShowMessage: (String) -> Unit
 ) {
     val context = LocalContext.current
-    var selectedReportPeriod by remember { mutableIntStateOf(0) } // 0: Bulan Ini, 1: Kuartal, 2: Tahun Ini
+    var selectedReportPeriod by remember { mutableIntStateOf(0) } // 0: Bulan Ini, 1: 3 Bulan Terakhir, 2: Tahun Ini, 3: Semua Waktu
 
-    val totalSalary = summary.totalReceivedSalaryMonth
-    val totalBonus = summary.totalReceivedBonusMonth
-    val totalExpense = summary.totalActualExpensesMonth
-    val totalIncome = summary.totalReceivedIncomeMonth
+    val now = remember { Calendar.getInstance() }
+    val currentMonth = now.get(Calendar.MONTH)
+    val currentYear = now.get(Calendar.YEAR)
+    val ninetyDaysAgo = remember { System.currentTimeMillis() - 90L * 24 * 60 * 60 * 1000L }
+
+    val filteredIncomes = remember(incomes, selectedReportPeriod) {
+        incomes.filter { inc ->
+            if (inc.status != "DITERIMA") return@filter false
+            when (selectedReportPeriod) {
+                0 -> {
+                    val c = Calendar.getInstance().apply { timeInMillis = inc.dateMillis }
+                    c.get(Calendar.MONTH) == currentMonth && c.get(Calendar.YEAR) == currentYear
+                }
+                1 -> inc.dateMillis >= ninetyDaysAgo
+                2 -> {
+                    val c = Calendar.getInstance().apply { timeInMillis = inc.dateMillis }
+                    c.get(Calendar.YEAR) == currentYear
+                }
+                else -> true
+            }
+        }
+    }
+
+    val filteredExpenses = remember(expenses, selectedReportPeriod) {
+        expenses.filter { exp ->
+            when (selectedReportPeriod) {
+                0 -> {
+                    val c = Calendar.getInstance().apply { timeInMillis = exp.dateMillis }
+                    c.get(Calendar.MONTH) == currentMonth && c.get(Calendar.YEAR) == currentYear
+                }
+                1 -> exp.dateMillis >= ninetyDaysAgo
+                2 -> {
+                    val c = Calendar.getInstance().apply { timeInMillis = exp.dateMillis }
+                    c.get(Calendar.YEAR) == currentYear
+                }
+                else -> true
+            }
+        }
+    }
+
+    val totalIncome = remember(filteredIncomes) { filteredIncomes.sumOf { it.amount } }
+    val totalSalary = remember(filteredIncomes) { filteredIncomes.filter { it.incomeType == "GAJI_TETAP" }.sumOf { it.amount } }
+    val totalBonus = remember(filteredIncomes) { filteredIncomes.filter { it.incomeType == "BONUS" }.sumOf { it.amount } }
+    val totalOther = remember(filteredIncomes) { filteredIncomes.filter { it.incomeType != "GAJI_TETAP" && it.incomeType != "BONUS" }.sumOf { it.amount } }
+    val totalExpense = remember(filteredExpenses) { filteredExpenses.sumOf { it.amount } }
 
     val savingRatio = if (totalIncome > 0) {
         val saved = (totalIncome - totalExpense).coerceAtLeast(0L)
         ((saved.toFloat() / totalIncome.toFloat()) * 100f).toInt()
     } else 0
+
+    val periodLabel = when (selectedReportPeriod) {
+        0 -> "Bulan Ini"
+        1 -> "3 Bulan Terakhir"
+        2 -> "Tahun Ini"
+        else -> "Semua Waktu"
+    }
 
     LazyColumn(
         modifier = Modifier
@@ -103,6 +154,31 @@ fun ReportsScreen(
             )
         }
 
+        // Periode Selector Chips
+        item {
+            val periods = listOf("Bulan Ini", "3 Bulan Terakhir", "Tahun Ini", "Semua Waktu")
+            LazyRow(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 2.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                items(periods.size) { idx ->
+                    FilterChip(
+                        selected = selectedReportPeriod == idx,
+                        onClick = { selectedReportPeriod = idx },
+                        label = {
+                            Text(
+                                text = periods[idx],
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = if (selectedReportPeriod == idx) FontWeight.Bold else FontWeight.Medium
+                            )
+                        }
+                    )
+                }
+            }
+        }
+
         // Saving Ratio Card
         item {
             Card(
@@ -118,7 +194,7 @@ fun ReportsScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            text = "Rasio Tabungan & Investasi",
+                            text = "Rasio Tabungan ($periodLabel)",
                             style = MaterialTheme.typography.titleSmall,
                             fontWeight = FontWeight.Bold
                         )
@@ -179,7 +255,7 @@ fun ReportsScreen(
             ) {
                 Column(modifier = Modifier.padding(18.dp)) {
                     Text(
-                        text = "Arus Kas Bulan Ini",
+                        text = "Arus Kas ($periodLabel)",
                         style = MaterialTheme.typography.titleSmall,
                         fontWeight = FontWeight.Bold
                     )
@@ -215,14 +291,14 @@ fun ReportsScreen(
 
         // Charts
         item {
-            DonutExpenseChart(expenses = expenses)
+            DonutExpenseChart(expenses = filteredExpenses)
         }
 
         item {
             IncomeComparisonBarChart(
                 salaryReceived = totalSalary,
                 bonusReceived = totalBonus,
-                otherReceived = summary.totalReceivedOtherMonth
+                otherReceived = totalOther
             )
         }
 
@@ -242,22 +318,24 @@ fun ReportsScreen(
                 ) {
                     Column(modifier = Modifier.weight(1f)) {
                         Text("Salin Ringkasan Laporan", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
-                        Text("Salin ikhtisar keuangan ke clipboard", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text("Salin ikhtisar keuangan periode $periodLabel ke clipboard", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
 
                     OutlinedButton(
                         onClick = {
                             val summaryText = buildString {
                                 appendLine("=== LAPORAN KEUANGAN DOMPET PINTAR ===")
+                                appendLine("Periode: $periodLabel")
                                 appendLine("Total Pemasukan: ${CurrencyFormatter.formatRupiah(totalIncome)}")
                                 appendLine("Total Pengeluaran: ${CurrencyFormatter.formatRupiah(totalExpense)}")
+                                appendLine("Surplus / Sisa: ${CurrencyFormatter.formatRupiah(totalIncome - totalExpense)}")
                                 appendLine("Rasio Tabungan: $savingRatio%")
-                                appendLine("Dana Darurat: ${CurrencyFormatter.formatRupiah(summary.emergencyFundBalance)}")
-                                appendLine("Investasi: ${CurrencyFormatter.formatRupiah(summary.investmentCurrentValue)}")
+                                appendLine("Dana Darurat Terkumpul: ${CurrencyFormatter.formatRupiah(summary.emergencyFundBalance)}")
+                                appendLine("Investasi Saat Ini: ${CurrencyFormatter.formatRupiah(summary.investmentCurrentValue)}")
                             }
                             val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
                             clipboard.setPrimaryClip(ClipData.newPlainText("Laporan Keuangan", summaryText))
-                            onShowMessage("Ringkasan keuangan berhasil disalin ke clipboard!")
+                            onShowMessage("Ringkasan keuangan ($periodLabel) berhasil disalin ke clipboard!")
                         },
                         shape = RoundedCornerShape(10.dp)
                     ) {

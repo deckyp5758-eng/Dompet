@@ -325,6 +325,38 @@ class FinanceCalculationTest {
         assertEquals(5_000L, summary.investmentGainLossAmount)
         assertEquals(10f, summary.investmentGainLossPct, 0.01f)
     }
+
+    @Test
+    fun `test updating expense recalculates actual cash balance correctly`() {
+        val now = System.currentTimeMillis()
+        val salary = IncomeEntity(id = 1, dateMillis = now, amount = 3_000_000L, status = "DITERIMA", incomeType = "GAJI_TETAP", source = "Gaji Bulanan")
+        val initialExpense = ExpenseEntity(id = 1, dateMillis = now, amount = 50_000L, category = "Makan", paymentMethod = "TUNAI")
+
+        val summaryBefore = DashboardCalculator.calculate(
+            prof = ProfileEntity(monthlySalary = 3_000_000L),
+            incList = listOf(salary),
+            expList = listOf(initialExpense),
+            efList = emptyList(),
+            invList = emptyList(),
+            budList = emptyList()
+        )
+        // Cash = 3.000.000 - 50.000 = 2.950.000
+        assertEquals(2_950_000L, summaryBefore.actualCashBalance)
+
+        // User edits expense from 50.000 to 120.000
+        val updatedExpense = initialExpense.copy(amount = 120_000L)
+        val summaryAfter = DashboardCalculator.calculate(
+            prof = ProfileEntity(monthlySalary = 3_000_000L),
+            incList = listOf(salary),
+            expList = listOf(updatedExpense),
+            efList = emptyList(),
+            invList = emptyList(),
+            budList = emptyList()
+        )
+        // Cash = 3.000.000 - 120.000 = 2.880.000
+        assertEquals(2_880_000L, summaryAfter.actualCashBalance)
+        assertEquals(2_880_000L, summaryAfter.totalNetWorth)
+    }
 }
 
 // Dummy DAO for unit test calculation check
@@ -361,6 +393,16 @@ private class FakeFinanceDao : FinanceDao {
     override suspend fun getInvestmentAssetById(id: Long) = null
     override fun getAllInvestmentTransactions() = kotlinx.coroutines.flow.emptyFlow<List<InvestmentTxEntity>>()
     override suspend fun insertInvestmentTx(tx: InvestmentTxEntity) = 1L
+    override suspend fun getAllIncomesSync(): List<IncomeEntity> = emptyList()
+    override suspend fun getAllExpensesSync(): List<ExpenseEntity> = emptyList()
+    override suspend fun getAllEmergencyFundEntriesSync(): List<EmergencyFundEntity> = emptyList()
+    override suspend fun getAllInvestmentAssetsSync(): List<InvestmentAssetEntity> = emptyList()
+    override suspend fun getAllInvestmentTransactionsSync(): List<InvestmentTxEntity> = emptyList()
+    override suspend fun insertIncomes(incomes: List<IncomeEntity>) {}
+    override suspend fun insertExpenses(expenses: List<ExpenseEntity>) {}
+    override suspend fun insertEmergencyFundEntries(entries: List<EmergencyFundEntity>) {}
+    override suspend fun insertInvestmentAssets(assets: List<InvestmentAssetEntity>) {}
+    override suspend fun insertInvestmentTransactions(transactions: List<InvestmentTxEntity>) {}
     override suspend fun clearIncomes() {}
     override suspend fun clearExpenses() {}
     override suspend fun clearEmergencyFund() {}

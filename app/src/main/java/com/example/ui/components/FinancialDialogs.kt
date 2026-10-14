@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
@@ -56,6 +57,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import com.example.data.local.BudgetCategoryEntity
+import com.example.data.local.ExpenseEntity
 import com.example.data.local.IncomeEntity
 import com.example.data.local.InvestmentAssetEntity
 import com.example.data.model.AssetType
@@ -196,6 +198,51 @@ fun AddIncomeDialog(
                     )
                 }
 
+                // Quick Amount Chips
+                LazyRow(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 4.dp),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    items(listOf(50_000L, 100_000L, 500_000L, 1_000_000L)) { quick ->
+                        Surface(
+                            shape = RoundedCornerShape(8.dp),
+                            color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f),
+                            modifier = Modifier.clickable {
+                                val curr = amountText.toLongOrNull() ?: 0L
+                                amountText = (curr + quick).toString()
+                                errorMessage = null
+                            }
+                        ) {
+                            Text(
+                                text = "+${CurrencyFormatter.formatRupiah(quick)}",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.primary,
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 5.dp)
+                            )
+                        }
+                    }
+                    item {
+                        Surface(
+                            shape = RoundedCornerShape(8.dp),
+                            color = MaterialTheme.colorScheme.surfaceVariant,
+                            modifier = Modifier.clickable {
+                                amountText = ""
+                                errorMessage = null
+                            }
+                        ) {
+                            Text(
+                                text = "Reset",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 5.dp)
+                            )
+                        }
+                    }
+                }
+
                 Spacer(modifier = Modifier.height(10.dp))
 
                 // Sumber / Keterangan Input
@@ -312,13 +359,25 @@ fun AddIncomeDialog(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AddExpenseDialog(
+    initialExpense: ExpenseEntity? = null,
     onDismiss: () -> Unit,
     onSave: (amount: Long, category: String, paymentMethod: String, notes: String) -> Unit
 ) {
-    var amountText by remember { mutableStateOf("") }
-    var selectedCategory by remember { mutableStateOf(ExpenseCategory.MAKAN_POKOK) }
-    var selectedPaymentMethod by remember { mutableStateOf(PaymentMethod.TUNAI) }
-    var notes by remember { mutableStateOf("") }
+    var amountText by remember { mutableStateOf(initialExpense?.amount?.toString() ?: "") }
+    var selectedCategory by remember {
+        mutableStateOf(
+            if (initialExpense != null) ExpenseCategory.fromDisplayName(initialExpense.category)
+            else ExpenseCategory.MAKAN_POKOK
+        )
+    }
+    var selectedPaymentMethod by remember {
+        mutableStateOf(
+            if (initialExpense != null) {
+                PaymentMethod.entries.firstOrNull { it.name == initialExpense.paymentMethod || it.displayName == initialExpense.paymentMethod } ?: PaymentMethod.TUNAI
+            } else PaymentMethod.TUNAI
+        )
+    }
+    var notes by remember { mutableStateOf(initialExpense?.notes ?: "") }
     var errorMessage by remember { mutableStateOf<String?>(null) }
 
     var categoryDropdownExpanded by remember { mutableStateOf(false) }
@@ -346,13 +405,13 @@ fun AddExpenseDialog(
                 ) {
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
-                            text = "Catat Pengeluaran",
+                            text = if (initialExpense == null) "Catat Pengeluaran" else "Ubah Pengeluaran",
                             style = MaterialTheme.typography.titleLarge,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.primary
                         )
                         Text(
-                            text = "Langsung memotong saldo kas & pos anggaran",
+                            text = if (initialExpense == null) "Langsung memotong saldo kas & pos anggaran" else "Perbarui data pengeluaran yang tersimpan",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -389,6 +448,51 @@ fun AddExpenseDialog(
                         fontWeight = FontWeight.SemiBold,
                         modifier = Modifier.padding(start = 4.dp, top = 2.dp)
                     )
+                }
+
+                // Quick Amount Chips
+                LazyRow(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 4.dp),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    items(listOf(10_000L, 20_000L, 50_000L, 100_000L)) { quick ->
+                        Surface(
+                            shape = RoundedCornerShape(8.dp),
+                            color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f),
+                            modifier = Modifier.clickable {
+                                val curr = amountText.toLongOrNull() ?: 0L
+                                amountText = (curr + quick).toString()
+                                errorMessage = null
+                            }
+                        ) {
+                            Text(
+                                text = "+${CurrencyFormatter.formatRupiah(quick)}",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.primary,
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 5.dp)
+                            )
+                        }
+                    }
+                    item {
+                        Surface(
+                            shape = RoundedCornerShape(8.dp),
+                            color = MaterialTheme.colorScheme.surfaceVariant,
+                            modifier = Modifier.clickable {
+                                amountText = ""
+                                errorMessage = null
+                            }
+                        ) {
+                            Text(
+                                text = "Reset",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 5.dp)
+                            )
+                        }
+                    }
                 }
 
                 Spacer(modifier = Modifier.height(10.dp))
@@ -517,7 +621,7 @@ fun AddExpenseDialog(
                         shape = RoundedCornerShape(10.dp),
                         modifier = Modifier.testTag("save_expense_button")
                     ) {
-                        Text("Simpan")
+                        Text(if (initialExpense == null) "Simpan" else "Perbarui")
                     }
                 }
             }

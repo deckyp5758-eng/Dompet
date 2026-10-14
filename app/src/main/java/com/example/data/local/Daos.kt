@@ -113,6 +113,38 @@ interface FinanceDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertInvestmentTx(tx: InvestmentTxEntity): Long
 
+    // Bulk Synchronous Queries for Full Backup
+    @Query("SELECT * FROM incomes ORDER BY dateMillis DESC")
+    suspend fun getAllIncomesSync(): List<IncomeEntity>
+
+    @Query("SELECT * FROM expenses ORDER BY dateMillis DESC")
+    suspend fun getAllExpensesSync(): List<ExpenseEntity>
+
+    @Query("SELECT * FROM emergency_fund_history ORDER BY dateMillis DESC")
+    suspend fun getAllEmergencyFundEntriesSync(): List<EmergencyFundEntity>
+
+    @Query("SELECT * FROM investment_assets ORDER BY id ASC")
+    suspend fun getAllInvestmentAssetsSync(): List<InvestmentAssetEntity>
+
+    @Query("SELECT * FROM investment_transactions ORDER BY dateMillis DESC")
+    suspend fun getAllInvestmentTransactionsSync(): List<InvestmentTxEntity>
+
+    // Bulk Inserts for Full Restore
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertIncomes(incomes: List<IncomeEntity>)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertExpenses(expenses: List<ExpenseEntity>)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertEmergencyFundEntries(entries: List<EmergencyFundEntity>)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertInvestmentAssets(assets: List<InvestmentAssetEntity>)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertInvestmentTransactions(transactions: List<InvestmentTxEntity>)
+
     // Clear All (for reset/restore)
     @Query("DELETE FROM incomes")
     suspend fun clearIncomes()

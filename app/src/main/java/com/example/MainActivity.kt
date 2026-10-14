@@ -125,6 +125,7 @@ fun MainAppContent(viewModel: FinanceViewModel) {
     var showAddIncomeDialog by remember { mutableStateOf(false) }
     var incomeToEdit by remember { mutableStateOf<IncomeEntity?>(null) }
     var showAddExpenseDialog by remember { mutableStateOf(false) }
+    var expenseToEdit by remember { mutableStateOf<ExpenseEntity?>(null) }
     var bonusForAllocation by remember { mutableStateOf<IncomeEntity?>(null) }
     var showSalaryCustomizerDialog by remember { mutableStateOf(false) }
 
@@ -398,7 +399,10 @@ fun MainAppContent(viewModel: FinanceViewModel) {
                         incomeToEdit = null
                         showAddIncomeDialog = true
                     },
-                    onAddExpenseClick = { showAddExpenseDialog = true },
+                    onAddExpenseClick = {
+                        expenseToEdit = null
+                        showAddExpenseDialog = true
+                    },
                     onBonusAllocationClick = { currentDestinationIndex = 3 },
                     onCustomizeSalaryClick = { showSalaryCustomizerDialog = true },
                     onMarkSalaryReceivedClick = { id, source ->
@@ -414,10 +418,17 @@ fun MainAppContent(viewModel: FinanceViewModel) {
                         incomeToEdit = null
                         showAddIncomeDialog = true
                     },
-                    onAddExpenseClick = { showAddExpenseDialog = true },
+                    onAddExpenseClick = {
+                        expenseToEdit = null
+                        showAddExpenseDialog = true
+                    },
                     onEditIncomeClick = { inc ->
                         incomeToEdit = inc
                         showAddIncomeDialog = true
+                    },
+                    onEditExpenseClick = { exp ->
+                        expenseToEdit = exp
+                        showAddExpenseDialog = true
                     },
                     onDeleteIncomeClick = { inc -> incomeToDelete = inc },
                     onDeleteExpenseClick = { exp -> expenseToDelete = exp },
@@ -488,7 +499,8 @@ fun MainAppContent(viewModel: FinanceViewModel) {
                     profile = profile ?: com.example.data.local.ProfileEntity(),
                     onUpdateProfile = { newProf -> viewModel.updateProfile(newProf) },
                     onClearAllData = { viewModel.clearAllData() },
-                    onExportJson = { viewModel.repository.exportDataAsJson() },
+                    onExportJson = { viewModel.exportDataAsJson() },
+                    onRestoreJson = { jsonStr -> viewModel.restoreDataFromJson(jsonStr) },
                     onShowMessage = { msg -> viewModel.showMessage(msg) },
                     onOpenDiagnostics = { showDiagnosticsDialog = true }
                 )
@@ -694,13 +706,29 @@ fun MainAppContent(viewModel: FinanceViewModel) {
         )
     }
 
-    // Dialog Tambah Pengeluaran
+    // Dialog Tambah / Edit Pengeluaran
     if (showAddExpenseDialog) {
         AddExpenseDialog(
-            onDismiss = { showAddExpenseDialog = false },
-            onSave = { amount, category, method, notes ->
-                viewModel.addExpense(amount, category, method, notes)
+            initialExpense = expenseToEdit,
+            onDismiss = {
                 showAddExpenseDialog = false
+                expenseToEdit = null
+            },
+            onSave = { amount, category, method, notes ->
+                if (expenseToEdit != null) {
+                    viewModel.updateExpense(
+                        expenseToEdit!!.copy(
+                            amount = amount,
+                            category = category,
+                            paymentMethod = method,
+                            notes = notes
+                        )
+                    )
+                } else {
+                    viewModel.addExpense(amount, category, method, notes)
+                }
+                showAddExpenseDialog = false
+                expenseToEdit = null
             }
         )
     }

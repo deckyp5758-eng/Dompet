@@ -445,6 +445,10 @@ class FinanceRepository(val dao: FinanceDao) {
         }
     }
 
+    suspend fun restoreDataFromJson(jsonString: String): AppResult<String> {
+        return DataBackupManager.restoreDataFromJson(dao, jsonString)
+    }
+
     suspend fun resetToDemoData(): AppResult<Unit> {
         return runCatchingApp("resetToDemoData") {
             dao.clearIncomes()

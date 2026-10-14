@@ -519,4 +519,22 @@ class FinanceViewModel(application: Application) : AndroidViewModel(application)
             "Error Diagnostik: ${e.localizedMessage}"
         }
     }
+
+    suspend fun exportDataAsJson(): String {
+        return repository.exportDataAsJson()
+    }
+
+    fun restoreDataFromJson(jsonString: String, onComplete: ((Boolean, String) -> Unit)? = null) {
+        viewModelScope.launch {
+            repository.restoreDataFromJson(jsonString).onSuccess { msg ->
+                showMessage(msg)
+                onComplete?.invoke(true, msg)
+            }.onFailure { err ->
+                val errorMsg = "Gagal memulihkan cadangan: ${err.message}"
+                _lastOperationError.value = errorMsg
+                showMessage(errorMsg)
+                onComplete?.invoke(false, errorMsg)
+            }
+        }
+    }
 }

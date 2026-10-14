@@ -232,17 +232,48 @@ fun InvestmentScreen(
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)),
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Box(modifier = Modifier.padding(24.dp), contentAlignment = Alignment.Center) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(24.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Surface(
+                            shape = CircleShape,
+                            color = Color(0xFFEEF2FF),
+                            modifier = Modifier.size(52.dp)
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(Icons.Default.TrendingUp, contentDescription = null, tint = AccentIndigo, modifier = Modifier.size(26.dp))
+                            }
+                        }
+                        Spacer(modifier = Modifier.height(10.dp))
                         Text(
-                            text = "Belum ada instrumen investasi. Tambahkan Reksa Dana, Saham, Emas, dll.",
-                            style = MaterialTheme.typography.bodyMedium,
+                            text = "Portofolio Masih Kosong",
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = "Alokasikan sebagian dana ke Reksa Dana, Deposito, Saham, atau Emas.",
+                            style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Button(
+                            onClick = { showAddAssetDialog = true },
+                            colors = ButtonDefaults.buttonColors(containerColor = AccentIndigo),
+                            shape = RoundedCornerShape(10.dp)
+                        ) {
+                            Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("Tambah Aset Pertama")
+                        }
                     }
                 }
             }
         } else {
-            items(assets) { asset ->
+            items(assets, key = { it.id }) { asset ->
                 val assetGain = asset.currentMarketValue - asset.totalCapitalInvested
                 val assetProfit = assetGain >= 0
                 val assetPct = if (asset.totalCapitalInvested > 0) {
