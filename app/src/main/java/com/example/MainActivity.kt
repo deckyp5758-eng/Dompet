@@ -63,7 +63,10 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.LocalContext
+import com.example.core.update.UpdateManager
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -148,6 +151,14 @@ fun MainAppContent(viewModel: FinanceViewModel) {
     val lastCrashReport by AppLogger.lastCrashReport.collectAsStateWithLifecycle()
 
     val snackbarHostState = remember { SnackbarHostState() }
+    val context = LocalContext.current
+    val coroutineScope = rememberCoroutineScope()
+
+    LaunchedEffect(Unit) {
+        val updateManager = UpdateManager(context, snackbarHostState, coroutineScope)
+        updateManager.startPeriodicCheck()
+    }
+
     val userMessage by viewModel.userMessage.collectAsStateWithLifecycle()
     val lastOperationError by viewModel.lastOperationError.collectAsStateWithLifecycle()
 

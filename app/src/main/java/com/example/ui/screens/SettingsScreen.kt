@@ -4,6 +4,7 @@ import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
+import com.example.BuildConfig
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Upload
 import androidx.compose.foundation.background
@@ -94,6 +95,12 @@ fun SettingsScreen(
     var showResetDialog by remember { mutableStateOf(false) }
     var showRestoreDialog by remember { mutableStateOf(false) }
     var restoreJsonInput by remember { mutableStateOf("") }
+    var isCheckingUpdate by remember { mutableStateOf(false) }
+    var updateStatusText by remember { mutableStateOf("") }
+    var availableUpdateInfo by remember { mutableStateOf<com.example.core.update.UpdateInfo?>(null) }
+    var showUpdateAvailableDialog by remember { mutableStateOf(false) }
+    var showUpToDateDialog by remember { mutableStateOf(false) }
+    var githubRepoInput by remember { mutableStateOf(com.example.core.update.AutoUpdateManager.getSavedRepo(context)) }
 
     val currentMaxDays = remember { Calendar.getInstance().getActualMaximum(Calendar.DAY_OF_MONTH) }
 
@@ -442,6 +449,88 @@ fun SettingsScreen(
             }
         }
 
+        // Auto Update Card (GitHub OTA)
+        item {
+            Card(
+                shape = RoundedCornerShape(20.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column(modifier = Modifier.padding(18.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Surface(
+                            shape = CircleShape,
+                            color = Color(0xFFEFF6FF),
+                            modifier = Modifier.size(42.dp)
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(Icons.Default.Download, contentDescription = null, tint = AccentIndigo, modifier = Modifier.size(22.dp))
+                            }
+                        }
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Column {
+                            Text("Pembaruan Otomatis via GitHub", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                            Text("Versi Terpasang: ${BuildConfig.VERSION_NAME} (Build ${BuildConfig.VERSION_CODE})", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(14.dp))
+
+                    OutlinedTextField(
+                        value = githubRepoInput,
+                        onValueChange = { githubRepoInput = it },
+                        label = { Text("Repository GitHub (owner/repo)") },
+                        placeholder = { Text("contoh: username/dompet-pintar") },
+                        singleLine = true,
+                        shape = RoundedCornerShape(12.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    )
+
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    if (updateStatusText.isNotBlank()) {
+                        Text(
+                            text = updateStatusText,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.primary,
+                            fontWeight = FontWeight.Medium
+                        )
+                        Spacer(modifier = Modifier.height(10.dp))
+                    }
+
+                    Button(
+                        onClick = {
+                            com.example.core.update.AutoUpdateManager.saveRepo(context, githubRepoInput)
+                            isCheckingUpdate = true
+                            updateStatusText = "Memeriksa rilis terbaru di GitHub..."
+                            scope.launch {
+                                val info = com.example.core.update.AutoUpdateManager.checkForUpdate(context, githubRepoInput)
+                                isCheckingUpdate = false
+                                if (info != null && info.versionCode > BuildConfig.VERSION_CODE) {
+                                    availableUpdateInfo = info
+                                    updateStatusText = "Versi baru ${info.versionName} tersedia di GitHub!"
+                                    showUpdateAvailableDialog = true
+                                } else if (info != null) {
+                                    updateStatusText = "Aplikasi Anda (${BuildConfig.VERSION_NAME}) sudah menggunakan versi terbaru."
+                                    showUpToDateDialog = true
+                                } else {
+                                    updateStatusText = "Gagal memeriksa GitHub. Periksa kembali nama repository (owner/repo)."
+                                }
+                            }
+                        },
+                        enabled = !isCheckingUpdate,
+                        shape = RoundedCornerShape(12.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Icon(Icons.Default.Download, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(if (isCheckingUpdate) "Memeriksa GitHub..." else "Periksa Pembaruan dari GitHub")
+                    }
+                }
+            }
+        }
+
         // App Info
         item {
             Column(
@@ -543,6 +632,69 @@ fun SettingsScreen(
                     shape = RoundedCornerShape(10.dp)
                 ) {
                     Text("Batal")
+                }
+            }
+        )
+    }
+
+    if (showUpdateAvailableDialog && availableUpdateInfo != null) {
+        AlertDialog(
+            onDismissRequest = { showUpdateAvailableDialog = false },
+            icon = { Icon(Icons.Default.Download, contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
+            title = { Text("Pembaruan Tersedia (${availableUpdateInfo?.versionName})") },
+            text = {
+                Column {
+                    Text(
+                        text = "Versi baru aplikasi (${availableUpdateInfo?.versionName}) siap diunduh dan diinstal secara otomatis.",
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = "Catatan Rilis:\n${availableUpdateInfo?.releaseNotes}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showUpdateAvailableDialog = false
+                        availableUpdateInfo?.let { info ->
+                            com.example.core.update.AutoUpdateManager.downloadAndInstallApk(context, info.apkUrl) { status ->
+                                updateStatusText = status
+                                onShowMessage(status)
+                            }
+                        }
+                    },
+                    shape = RoundedCornerShape(10.dp)
+                ) {
+                    Text("Unduh & Instal")
+                }
+            },
+            dismissButton = {
+                OutlinedButton(
+                    onClick = { showUpdateAvailableDialog = false },
+                    shape = RoundedCornerShape(10.dp)
+                ) {
+                    Text("Nanti Saja")
+                }
+            }
+        )
+    }
+
+    if (showUpToDateDialog) {
+        AlertDialog(
+            onDismissRequest = { showUpToDateDialog = false },
+            icon = { Icon(Icons.Default.Info, contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
+            title = { Text("Aplikasi Terkini") },
+            text = { Text("Aplikasi Dompet Pintar Anda sudah menggunakan versi paling mutakhir (${BuildConfig.VERSION_NAME}).") },
+            confirmButton = {
+                Button(
+                    onClick = { showUpToDateDialog = false },
+                    shape = RoundedCornerShape(10.dp)
+                ) {
+                    Text("OK")
                 }
             }
         )
