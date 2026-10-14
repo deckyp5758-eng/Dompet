@@ -51,6 +51,7 @@ class ExampleRobolectricTest {
             override suspend fun deleteIncome(income: IncomeEntity) {}
             override suspend fun deleteIncomeById(id: Long) {}
             override suspend fun getIncomeById(id: Long) = null
+            override suspend fun getLatestReceivedIncomeByType(type: String): IncomeEntity? = null
             override suspend fun getPendingSalaries(): List<IncomeEntity> = emptyList()
             override suspend fun updatePendingSalaryAmount(newAmount: Long) {}
             override fun getAllExpenses() = emptyFlow<List<ExpenseEntity>>()
