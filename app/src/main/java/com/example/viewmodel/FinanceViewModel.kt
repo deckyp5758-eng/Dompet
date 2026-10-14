@@ -31,6 +31,9 @@ import kotlinx.coroutines.launch
 typealias DashboardSummary = com.example.data.calculator.DashboardSummary
 
 class FinanceViewModel(application: Application) : AndroidViewModel(application) {
+    private val _latestSalary = MutableStateFlow(0L)
+    val latestSalary: StateFlow<Long> = _latestSalary.asStateFlow()
+
     val repository: FinanceRepository
 
     init {
@@ -41,9 +44,6 @@ class FinanceViewModel(application: Application) : AndroidViewModel(application)
             _latestSalary.value = repository.getLatestSalary()
         }
     }
-
-    private val _latestSalary = MutableStateFlow(0L)
-    val latestSalary: StateFlow<Long> = _latestSalary.asStateFlow()
 
     val profile: StateFlow<ProfileEntity?> = repository.profile.stateIn(
         viewModelScope,
