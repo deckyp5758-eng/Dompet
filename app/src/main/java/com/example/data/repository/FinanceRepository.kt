@@ -462,8 +462,6 @@ class FinanceRepository(val dao: FinanceDao) {
             monthlyBudgetDao?.clearAllMonthlyBudgets()
             savingsGoalDao?.clearAllSavingsGoals()
 
-            AppDatabase.populateDemoData(dao, transactionDao, monthlyBudgetDao, savingsGoalDao)
-
             val now = System.currentTimeMillis()
             val cal = Calendar.getInstance()
 
