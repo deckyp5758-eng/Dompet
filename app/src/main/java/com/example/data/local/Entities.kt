@@ -86,3 +86,55 @@ data class InvestmentTxEntity(
     val amount: Long,
     val notes: String = ""
 )
+
+/**
+ * Entitas untuk riwayat transaksi keuangan umum (Income, Expense, Transfer, Savings).
+ */
+@Entity(tableName = "transaction_history")
+data class TransactionEntity(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val title: String,
+    val amount: Long,
+    val type: String, // "INCOME", "EXPENSE", "TRANSFER", "SAVINGS"
+    val category: String,
+    val paymentMethod: String = "TUNAI",
+    val dateMillis: Long = System.currentTimeMillis(),
+    val notes: String = "",
+    val relatedEntityId: Long? = null
+)
+typealias TransactionHistoryEntity = TransactionEntity
+
+/**
+ * Entitas untuk target dan anggaran bulanan.
+ */
+@Entity(tableName = "monthly_budgets")
+data class MonthlyBudgetEntity(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val month: Int, // 1 - 12
+    val year: Int,  // Contoh: 2026
+    val totalBudget: Long,
+    val allocatedNeeds: Long = 0L,
+    val allocatedWants: Long = 0L,
+    val allocatedSavings: Long = 0L,
+    val notes: String = "",
+    val createdAtMillis: Long = System.currentTimeMillis()
+)
+
+/**
+ * Entitas untuk target tabungan (Savings Goals).
+ */
+@Entity(tableName = "savings_goals")
+data class SavingsGoalEntity(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val title: String,
+    val targetAmount: Long,
+    val currentAmount: Long = 0L,
+    val targetDateMillis: Long,
+    val category: String = "Tabungan",
+    val priority: String = "SEDANG", // "RENDAH", "SEDANG", "TINGGI"
+    val iconName: String = "savings",
+    val isCompleted: Boolean = false,
+    val notes: String = "",
+    val createdAtMillis: Long = System.currentTimeMillis()
+)
+

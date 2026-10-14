@@ -34,9 +34,9 @@ class FinanceViewModel(application: Application) : AndroidViewModel(application)
     val repository: FinanceRepository
 
     init {
-        val db = AppDatabase.getDatabase(application)
+        val db = com.example.data.local.DatabaseProvider.provideDatabase(application)
         repository = FinanceRepository(db.financeDao())
-        AppLogger.info("FinanceViewModel", "FinanceViewModel berhasil diinisialisasi")
+        AppLogger.info("FinanceViewModel", "FinanceViewModel berhasil diinisialisasi dengan DatabaseProvider")
     }
 
     val profile: StateFlow<ProfileEntity?> = repository.profile.stateIn(
