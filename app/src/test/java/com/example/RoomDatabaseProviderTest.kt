@@ -17,7 +17,6 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -27,8 +26,13 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
+/**
+ * Robust Robolectric test suite for Room database providers and DAOs,
+ * using an in-memory database instance to prevent CI file locking conflicts
+ * and ensuring clean lifecycle management.
+ */
 @RunWith(RobolectricTestRunner::class)
-@Config(manifest = Config.NONE)
+@Config(manifest = Config.NONE, sdk = [34])
 class RoomDatabaseProviderTest {
 
     private lateinit var db: AppDatabase
@@ -40,20 +44,28 @@ class RoomDatabaseProviderTest {
     @Before
     fun setup() {
         context = ApplicationProvider.getApplicationContext()
+        // Create an in-memory database instance for testing.
+        // In-memory databases exist solely in RAM and do not write to disk,
+        // avoiding any file lock or permission conflicts in CI environments.
         db = Room.inMemoryDatabaseBuilder(context, AppDatabase::class.java)
             .allowMainThreadQueries()
             .build()
+
         transactionDao = db.transactionDao()
         monthlyBudgetDao = db.monthlyBudgetDao()
         savingsGoalDao = db.savingsGoalDao()
 
+        // Inject test database instance into DatabaseProvider singleton
         DatabaseProvider.setDatabaseForTesting(db)
     }
 
     @After
     fun tearDown() {
+        // Clean up lifecycle: reset test database instance and close database safely
         DatabaseProvider.setDatabaseForTesting(null)
-        db.close()
+        if (::db.isInitialized && db.isOpen) {
+            db.close()
+        }
     }
 
     @Test
